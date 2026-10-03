@@ -97,7 +97,19 @@ TOOLS = [
             {"output_path": STR("File to write (default ./fortigate-<hostname>-<timestamp>.conf)")}
         ),
     },
+    {
+        "name": "forticonverter_setup_prompt",
+        "description": (
+            "Show or hide the 'Migrate Config with FortiConverter' step of the GUI's FortiGate Setup "
+            "popup. Without hide, only reports the current state. FortiGate-VM evaluation licenses are "
+            "not eligible for FortiConverter, so that step never completes and the popup reappears at "
+            "every login until it is hidden. There is no CLI equivalent."
+        ),
+        "inputSchema": schema({"hide": BOOL("true hides the step, false shows it again; omit to read")}),
+    },
 ]
+
+FORTICONVERTER_PROMPT = "/api/v2/monitor/forticonverter/show-in-startup"
 
 
 async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> Any:
@@ -166,5 +178,11 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
         path = Path(args.get("output_path") or f"fortigate-{hostname}-{time.strftime('%Y%m%d-%H%M%S')}.conf")
         path.write_text(text)
         return {"path": str(path.resolve()), "bytes": len(text.encode()), "config_version": header}
+
+    elif name == "forticonverter_setup_prompt":
+        if args.get("hide") is not None:
+            # Undocumented endpoint used by the GUI (setPromptVisibility); the body is {"hide": bool}.
+            await client.post(f"{FORTICONVERTER_PROMPT}/set", {"hide": bool(args["hide"])}, v)
+        return results(await client.get(FORTICONVERTER_PROMPT, v))
 
     raise ValueError(f"Unknown tool: {name}")

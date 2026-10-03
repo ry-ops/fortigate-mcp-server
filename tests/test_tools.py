@@ -127,3 +127,24 @@ async def test_sessions_uses_plural_endpoint(fgt):
     rec.respond("GET", "/api/v2/monitor/firewall/sessions", 200, {"results": {"details": [{"saddr": "a"}]}})
     assert await firewall.handle("list_sessions", {"dstport": 443}, c) == [{"saddr": "a"}]
     assert rec.requests[0].url.params["dstport"] == "443"
+
+
+async def test_forticonverter_prompt_read_only_by_default(fgt):
+    from fortigate_mcp.tools import system
+
+    c, rec = fgt
+    rec.respond("GET", "/api/v2/monitor/forticonverter/show-in-startup", 200, {"results": {"hidden": False}})
+    assert await system.handle("forticonverter_setup_prompt", {}, c) == {"hidden": False}
+    assert [r.method for r in rec.requests] == ["GET"]
+
+
+async def test_forticonverter_prompt_hide_posts_then_reads(fgt):
+    from fortigate_mcp.tools import system
+
+    c, rec = fgt
+    rec.respond("GET", "/api/v2/monitor/forticonverter/show-in-startup", 200, {"results": {"hidden": True}})
+    out = await system.handle("forticonverter_setup_prompt", {"hide": True}, c)
+    assert rec.requests[0].method == "POST"
+    assert rec.requests[0].url.path == "/api/v2/monitor/forticonverter/show-in-startup/set"
+    assert rec.body(0) == {"hide": True}
+    assert out == {"hidden": True}
