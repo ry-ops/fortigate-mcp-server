@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..client import FortiGateClient
+from ._capacity import capacity
 from ._common import (
     BOOL,
     EXTRA,
@@ -40,6 +41,15 @@ TOOLS = [
             "FortiGate-VM reports vm.status=vm_invalid and refuses most other API calls with 401."
         ),
         "inputSchema": schema({"all": BOOL("Return every entitlement (default false)")}),
+    },
+    {
+        "name": "get_license_limits",
+        "description": (
+            "How much of the license's object limits is used. The free FortiGate-VM evaluation "
+            "license allows 1 vCPU, 2 GB RAM and at most 3 interfaces, 3 firewall policies and 3 "
+            "static routes; this lists what counts against each so you can plan before hitting one."
+        ),
+        "inputSchema": schema({}),
     },
     {
         "name": "get_resource_usage",
@@ -150,6 +160,9 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
         if args.get("all") or not isinstance(lic, dict):
             return lic
         return {k: lic.get(k) for k in ("vm", "forticare", "fortiguard", "forticloud")}
+
+    elif name == "get_license_limits":
+        return await capacity(client, v)
 
     elif name == "get_resource_usage":
         usage = results(await client.get("/api/v2/monitor/system/resource/usage", {**v, "interval": "1-min"}))

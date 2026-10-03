@@ -28,6 +28,7 @@ POLICY = "/api/v2/cmdb/firewall/policy"
 ADDRESS = "/api/v2/cmdb/firewall/address"
 ADDRGRP = "/api/v2/cmdb/firewall/addrgrp"
 SERVICE = "/api/v2/cmdb/firewall.service/custom"
+SERVICE_GROUP = "/api/v2/cmdb/firewall.service/group"
 
 POLICY_FIELDS = {
     "name": STR("Policy name"),
@@ -214,6 +215,38 @@ TOOLS = [
         ),
     },
     {
+        "name": "list_service_groups",
+        "description": "List service groups and their members.",
+        "inputSchema": schema({**LIST_PROPS}),
+    },
+    {
+        "name": "create_service_group",
+        "description": (
+            "Create a service group, e.g. K3S-MGMT = [SSH, K8S-API, PING]. Grouping services lets one "
+            "policy cover what would otherwise need several, which helps under the evaluation "
+            "license's 3-policy limit."
+        ),
+        "inputSchema": schema(
+            {"name": STR("Group name"), "members": STR_LIST("Service or group names"),
+             "comment": STR("Comment"), "extra": EXTRA},
+            ["name", "members"],
+        ),
+    },
+    {
+        "name": "update_service_group",
+        "description": "Update a service group. members replaces the whole member list.",
+        "inputSchema": schema(
+            {"name": STR("Group name"), "members": STR_LIST("Complete new member list"),
+             "comment": STR("Comment"), "extra": EXTRA},
+            ["name"],
+        ),
+    },
+    {
+        "name": "delete_service_group",
+        "description": "Delete a service group (fails while a policy still uses it).",
+        "inputSchema": schema({"name": STR("Group name")}, ["name"]),
+    },
+    {
         "name": "delete_service",
         "description": "Delete a custom service (fails while a policy still uses it).",
         "inputSchema": schema({"name": STR("Service name")}, ["name"]),
@@ -356,6 +389,22 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
              "comment": "comment"},
         )
         return write_result(await client.post(SERVICE, data, v))
+
+    elif name == "list_service_groups":
+        return results(await client.get(SERVICE_GROUP, list_params(args)))
+
+    elif name == "create_service_group":
+        data = {"name": args["name"], "member": names(args["members"]), **body(args, {"comment": "comment"})}
+        return write_result(await client.post(SERVICE_GROUP, data, v))
+
+    elif name == "update_service_group":
+        data = body(args, {"comment": "comment"})
+        if args.get("members") is not None:
+            data["member"] = names(args["members"])
+        return write_result(await client.put(f"{SERVICE_GROUP}/{mkey(args['name'])}", data, v))
+
+    elif name == "delete_service_group":
+        return write_result(await client.delete(f"{SERVICE_GROUP}/{mkey(args['name'])}", v))
 
     elif name == "delete_service":
         return write_result(await client.delete(f"{SERVICE}/{mkey(args['name'])}", v))
