@@ -6,15 +6,24 @@ An [MCP](https://modelcontextprotocol.io) server for managing Fortinet FortiGate
 
 | Area | Tools |
 |---|---|
-| System | `get_system_status`, `get_license_status`, `get_resource_usage`, `list_interfaces`, `get_interface`, `get_interface_status`, `update_interface`, `list_admin_sessions`, `backup_config`, `forticonverter_setup_prompt`, `activate_vm_eval_license` |
-| Firewall | `list_firewall_policies`, `get_firewall_policy`, `create_firewall_policy`, `update_firewall_policy`, `delete_firewall_policy`, `move_firewall_policy`, `get_policy_stats`, `list_sessions`, `list_addresses`, `get_address`, `create_address`, `update_address`, `delete_address`, `list_address_groups`, `create_address_group`, `update_address_group`, `delete_address_group`, `list_services`, `create_service`, `delete_service` |
+| System | `get_system_status`, `get_license_status`, `get_resource_usage`, `list_interfaces`, `get_interface`, `get_interface_status`, `update_interface`, `list_admin_sessions`, `backup_config`, `forticonverter_setup_prompt`, `activate_vm_eval_license`, `get_license_limits` |
+| Firewall | `list_firewall_policies`, `get_firewall_policy`, `create_firewall_policy`, `update_firewall_policy`, `delete_firewall_policy`, `move_firewall_policy`, `get_policy_stats`, `list_sessions`, `list_addresses`, `get_address`, `create_address`, `update_address`, `delete_address`, `list_address_groups`, `create_address_group`, `update_address_group`, `delete_address_group`, `list_services`, `create_service`, `delete_service`, `list_service_groups`, `create_service_group`, `update_service_group`, `delete_service_group` |
+| Port forwards | `list_port_forwards`, `create_port_forward` (attach to an existing policy, VIP/address mixing checked, rollback on failure), `delete_port_forward` (detach first) |
+| Application control | `search_applications`, `list_app_categories`, `list_app_control_profiles`, `add_app_control_rule` (by app/category name, inserted above catch-all rules), `delete_app_control_rule` |
+| Live traffic | `get_top_traffic` (FortiView by source, destination, application, country...), `get_arp_table` |
 | Inspection & certificates | `list_ssl_ssh_profiles`, `update_ssl_ssh_profile`, `list_certificates` (key type/size, weak keys flagged), `download_certificate` (PEM + SHA-256) |
 | Logs | `get_logs`: traffic, app-ctrl (HTTPS hostnames under certificate inspection), event, IPS, web filter and more, from memory, disk or FortiAnalyzer |
 | Routing | `get_routing_table`, `list_static_routes`, `create_static_route`, `delete_static_route` |
 | DNS & DHCP | `get_dns_settings`, `list_dns_servers`, `set_dns_server`, `delete_dns_server`, `list_dns_zones`, `create_dns_zone`, `delete_dns_zone`, `add_dns_record`, `delete_dns_record`, `list_dhcp_servers`, `list_dhcp_leases`, `update_dhcp_server`, `add_dhcp_reservation`, `delete_dhcp_reservation` |
+| Kubernetes (optional) | `k8s_cluster_overview`, `k8s_sync_ingress_dns` (Ingress/IngressRoute hosts → FortiGate DNS records), `k8s_sync_node_addresses` (node IPs → address range or group) |
+| Proxmox (optional) | `identify_clients` (DHCP/ARP clients → Proxmox VM by MAC), plus `resolve_vms=true` on `get_logs`, `list_sessions`, `get_top_traffic` and `list_dhcp_leases` |
 | Anything else | `fortigate_api`, a raw call to any `/api/v2/` endpoint |
 
 Tools take friendly arguments and build the FortiOS body for you: CIDR (`10.0.0.0/24`) instead of `ip mask`, plain lists (`["port1"]`) instead of `[{"name": "port1"}]`, and booleans instead of `enable`/`disable`. Policy tools take security profiles directly (`ssl_ssh_profile`, `application_list`, `ips_sensor`, `av_profile`, `webfilter_profile`) and turn on `utm-status` when you attach one. Every create/update tool also accepts `extra`, a dict merged into the body as-is, for attributes the tool does not model.
+
+## Built for the free FortiGate-VM license
+
+Everything works on the permanent evaluation license (1 vCPU, 2 GB, 3 interfaces / 3 policies / 3 static routes, no FortiGuard services, low encryption). Tools know the limits: `get_license_limits` shows what is used, `create_port_forward` attaches to an existing policy instead of needing a new one, service groups fold several ports into one policy, and app control uses the signatures bundled with FortiOS.
 
 ## Configuration
 
@@ -28,6 +37,8 @@ Tools take friendly arguments and build the FortiOS body for you: CIDR (`10.0.0.
 | `FORTIGATE_VERIFY_SSL` | `false` | Verify the TLS certificate |
 | `FORTIGATE_READ_ONLY` | `false` | Refuse every POST/PUT/DELETE before it reaches the FortiGate |
 | `FORTIGATE_TIMEOUT` | `30` | Request timeout (seconds) |
+| `K8S_KUBECONFIG` / `K8S_CONTEXT` | | Enables the Kubernetes tools. Cert, token or basic users (no exec plugins). The cluster is only read |
+| `PROXMOX_HOST`, `PROXMOX_USER`, `PROXMOX_TOKEN_NAME`, `PROXMOX_TOKEN_VALUE`, `PROXMOX_PORT`, `PROXMOX_VERIFY_SSL` | | Enables the Proxmox tools. Same names as [proxmox-mcp-server](https://github.com/ry-ops/proxmox-mcp-server); a token with only the `PVEAuditor` role is enough |
 | `FORTICLOUD_ACCOUNT` / `FORTICLOUD_PASSWORD` | | Only for `activate_vm_eval_license`. Read from the environment, never from tool arguments |
 
 ### Creating an API token
@@ -56,12 +67,23 @@ Tools take friendly arguments and build the FortiOS body for you: CIDR (`10.0.0.
 
 Start with `FORTIGATE_READ_ONLY=true` and turn it off when you want Claude to make changes.
 
+## Kubernetes and Proxmox integrations
+
+Both are optional and switch on when their variables are set; without them their tools are not offered.
+
+**k3s / Kubernetes.** FortiOS local DNS zones cannot hold wildcard records, so `*.lab → Traefik` is impossible. `k8s_sync_ingress_dns` reads every Ingress (and Traefik IngressRoute) hostname inside a FortiGate zone and creates one A record per ingress IP, so `whoami.lab` resolves for everything behind the FortiGate. `k8s_sync_node_addresses` keeps the address object your policies use (e.g. `K3S-NODES`) matched to the node IPs: a range when they are contiguous, otherwise one /32 per node in an address group. Both default to `dry_run=true` and show their plan first. Nothing is written to the cluster.
+
+**Proxmox VE.** `identify_clients` matches the FortiGate's DHCP leases and ARP entries to Proxmox VMs and containers by NIC MAC address (VMID, name, node, bridge, VLAN tag). `resolve_vms=true` on log, session, FortiView and DHCP tools adds a `<field>_vm` label such as `111 k3s-worker1 (qemu on pve01)`. Create the token with privilege separation and only the `PVEAuditor` role.
+
 ## FortiOS gotchas this server handles
 
 - **7.6 dropped `/logincheck`.** Session login is a JSON `POST /api/v2/authentication`, and the CSRF cookie is named `ccsrf_token_<port>_<hash>`. The client does both and logs in again once if the session times out.
 - **Errors say why.** FortiOS explains failures in the response body (`cli_error`). Error messages include it instead of a bare HTTP status.
 - **DHCP reservations need `action=reserved`.** With the default `assign`, the `ip` field does not exist. `add_dhcp_reservation` always uses `reserved`.
 - **DHCP `vci-match`.** New DHCP servers can default to answering only FortiSwitch/FortiExtender vendor classes, which silently ignores normal clients. `update_dhcp_server` takes `vci_match=false`.
+- **VIPs and ordinary addresses cannot share a policy's destinations** ("Addresses/groups cannot be mixed with virtual IPs"). `create_port_forward` checks before creating anything.
+- **App-control profiles start with a catch-all pass rule**, so rules appended after it never match. New rules are moved to the top.
+- **FortiView's historical `statistics` endpoint is gone in 7.6**; `get_top_traffic` uses `realtime-statistics`.
 - **No wildcard DNS records.** FortiOS rejects `*` hostnames in local zones. `add_dns_record` refuses them up front with a clear message.
 - **The "FortiGate Setup" popup never goes away on evaluation VMs.** Its "Migrate Config with FortiConverter" step checks FortiConverter eligibility, which evaluation licenses never pass, so the step spins forever and the popup returns at every login. There is no CLI setting. `forticonverter_setup_prompt` with `hide=true` calls the undocumented endpoint the GUI itself uses (`POST /api/v2/monitor/forticonverter/show-in-startup/set` with `{"hide": true}`).
 - **An SSL inspection profile does nothing on its own in flow mode.** Traffic is only inspected once a security profile (e.g. application control `default`) is attached. Policy tools return a `warning` when a policy has an SSL profile but no security profile.

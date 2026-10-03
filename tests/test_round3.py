@@ -116,7 +116,7 @@ async def test_top_traffic_resolves_app_names(fgt):
 async def test_arp_filter(fgt):
     c, rec = fgt
     rec.respond("GET", "/api/v2/monitor/network/arp", 200, {"results": [
-        {"ip": "10.88.145.1", "interface": "port1"}, {"ip": "192.168.150.10", "interface": "port2"}]})
+        {"ip": "10.0.0.1", "interface": "port1"}, {"ip": "192.168.150.10", "interface": "port2"}]})
     assert await traffic.handle("get_arp_table", {"interface": "port2"}, c) == [{"ip": "192.168.150.10", "interface": "port2"}]
 
 

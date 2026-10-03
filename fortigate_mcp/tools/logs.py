@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from ..client import FortiGateClient
-from ._common import INT, STR, STR_LIST, compact, schema, vdom_param
+from ..integrations import pve
+from ._common import BOOL, INT, STR, STR_LIST, compact, schema, vdom_param
 
 LOG_TYPES = (
     "traffic/forward", "traffic/local", "traffic/multicast", "traffic/sniffer",
@@ -33,6 +34,7 @@ TOOLS = [
                 "rows": INT("Rows to return (default 50, max 1000)"),
                 "start": INT("Offset for paging (default 0)"),
                 "filter": STR("FortiOS log filter, e.g. srcip==192.168.150.10 or policyid==1 or hostname=@github"),
+                "resolve_vms": BOOL("Label IPs/MACs with the Proxmox VM that owns them (needs PROXMOX_*)"),
                 "fields": STR_LIST(
                     "Only return these fields per row, e.g. [date, time, srcip, dstip, hostname, app, action]"
                 ),
@@ -63,8 +65,14 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
             return compact(resp)
         # Logs carry internal _metadata and *_raw_value duplicates; drop them for readability.
         rows = [{k: v for k, v in r.items() if k != "_metadata" and not k.endswith("_raw_value")} for r in rows]
+        if args.get("resolve_vms"):
+            rows = await pve.annotate(rows, client, vdom_param(args))
         if args.get("fields"):
-            rows = [{f: r.get(f) for f in args["fields"]} for r in rows]
+            fields = args["fields"]
+            rows = [
+                {f: r.get(f) for f in fields} | {f"{f}_vm": r[f"{f}_vm"] for f in fields if f"{f}_vm" in r}
+                for r in rows
+            ]
         out: dict[str, Any] = {"rows": len(rows), "results": rows}
         if isinstance(resp, dict) and "total_lines" in resp:
             out["total_lines"] = resp["total_lines"]

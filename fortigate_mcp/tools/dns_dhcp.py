@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..client import FortiGateAPIError, FortiGateClient
+from ..integrations import pve
 from ._common import (
     BOOL,
     EXTRA,
@@ -111,7 +112,7 @@ TOOLS = [
     {
         "name": "list_dhcp_leases",
         "description": "Current DHCP leases handed out by the FortiGate.",
-        "inputSchema": schema({}),
+        "inputSchema": schema({"resolve_vms": BOOL("Label IPs/MACs with the Proxmox VM that owns them (needs PROXMOX_*)"),}),
     },
     {
         "name": "update_dhcp_server",
@@ -228,7 +229,10 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
         return results(await client.get(DHCP, list_params(args)))
 
     elif name == "list_dhcp_leases":
-        return results(await client.get("/api/v2/monitor/system/dhcp", v))
+        leases = results(await client.get("/api/v2/monitor/system/dhcp", v))
+        if args.get("resolve_vms") and isinstance(leases, list):
+            leases = await pve.annotate(leases, client, v)
+        return leases
 
     elif name == "update_dhcp_server":
         data = body(

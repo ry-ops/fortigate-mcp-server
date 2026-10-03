@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from ..client import FortiGateClient
-from ._common import INT, STR, compact, results, schema, vdom_param
+from ..integrations import pve
+from ._common import BOOL, INT, STR, compact, results, schema, vdom_param
 
 REPORT_BY = ("source", "destination", "application", "country", "interface", "policy", "protocol")
 SORT_BY = ("bytes", "sessions", "bandwidth", "packets")
@@ -27,6 +28,7 @@ TOOLS = [
                 "srcaddr": STR("Only sessions from this IP"),
                 "dstaddr": STR("Only sessions to this IP"),
                 "policyid": INT("Only sessions matched by this policy"),
+                "resolve_vms": BOOL("Label IPs/MACs with the Proxmox VM that owns them (needs PROXMOX_*)"),
             }
         ),
     },
@@ -82,6 +84,8 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
             if r.get("apps"):
                 row["applications"] = [names.get(a.get("id"), a.get("id")) for a in r["apps"]]
             out.append(row)
+        if args.get("resolve_vms"):
+            out = await pve.annotate(out, client, v)
         return out
 
     elif name == "get_arp_table":

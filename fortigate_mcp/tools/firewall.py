@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..client import FortiGateClient
+from ..integrations import pve
 from ._common import (
     BOOL,
     EXTRA,
@@ -139,6 +140,7 @@ TOOLS = [
                 "dstaddr": STR("Filter by destination IP"),
                 "dstport": INT("Filter by destination port"),
                 "policyid": INT("Filter by policy ID"),
+                "resolve_vms": BOOL("Label IPs/MACs with the Proxmox VM that owns them (needs PROXMOX_*)"),
             }
         ),
     },
@@ -344,7 +346,10 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
                 params[key] = args[key]
         # 7.6 renamed this endpoint to the plural form and nests rows under "details".
         res = results(await client.get("/api/v2/monitor/firewall/sessions", params))
-        return res.get("details", res) if isinstance(res, dict) else res
+        rows = res.get("details", res) if isinstance(res, dict) else res
+        if args.get("resolve_vms") and isinstance(rows, list):
+            rows = await pve.annotate(rows, client, v)
+        return rows
 
     elif name == "list_addresses":
         return results(await client.get(ADDRESS, list_params(args)))

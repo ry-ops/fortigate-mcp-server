@@ -26,11 +26,18 @@ from mcp.server import Server
 from mcp.types import TextContent, Tool
 
 from .client import FORTIGATE_READ_ONLY, FortiGateClient, _validate_config
-from .tools import appctrl, dns_dhcp, firewall, logs, nat, network, raw, security, system, traffic
+from .integrations import kube as kube_integration
+from .integrations import pve as pve_integration
+from .tools import appctrl, dns_dhcp, firewall, k8s, logs, nat, network, pve, raw, security, system, traffic
 
 # --- Build unified tool registry ---
 
 MODULES = [system, firewall, nat, appctrl, security, traffic, logs, network, dns_dhcp, raw]
+# Optional integrations: only offered when configured.
+if kube_integration.enabled():
+    MODULES.append(k8s)
+if pve_integration.enabled():
+    MODULES.append(pve)
 
 ALL_TOOLS: list[Tool] = []
 TOOL_MODULE: dict[str, Any] = {}
@@ -93,6 +100,8 @@ async def main() -> None:
             )
     finally:
         await fortigate.close()
+        await k8s.aclose()
+        await pve_integration.aclose()
 
 
 def run() -> None:
