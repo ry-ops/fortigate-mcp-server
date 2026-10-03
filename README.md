@@ -56,7 +56,7 @@ claude mcp add fortigate --scope user \
   -e FORTIGATE_HOST=192.168.1.99 \
   -e FORTIGATE_API_TOKEN=your-token \
   -e FORTIGATE_READ_ONLY=true \
-  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.4.0 fortigate-mcp-server
+  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.4.1 fortigate-mcp-server
 ```
 
 On macOS you can keep the token in your Keychain instead of in Claude's config:
@@ -65,7 +65,7 @@ On macOS you can keep the token in your Keychain instead of in Claude's config:
 security add-generic-password -a mcp-api -s fortigate-api-token -w   # paste the token when asked
 
 claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGATE_READ_ONLY=true -- \
-  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.4.0 fortigate-mcp-server'
+  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.4.1 fortigate-mcp-server'
 ```
 
 <details><summary><b>Claude Desktop</b></summary>
@@ -75,7 +75,7 @@ claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGAT
   "mcpServers": {
     "fortigate": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.4.0", "fortigate-mcp-server"],
+      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.4.1", "fortigate-mcp-server"],
       "env": {
         "FORTIGATE_HOST": "192.168.1.99",
         "FORTIGATE_API_TOKEN": "your-token",
@@ -375,7 +375,7 @@ Variables can also go in a `.env` file next to the server; see [`.env.example`](
 
 ## Releases and versioning
 
-Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.4.0`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
+Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.4.1`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
 
 ## Development
 

@@ -25,6 +25,7 @@ import mcp.server.stdio
 from mcp.server import Server
 from mcp.types import TextContent, Tool
 
+from . import __version__
 from .client import FORTIGATE_READ_ONLY, FortiGateClient, _validate_config
 from .integrations import kube as kube_integration
 from .integrations import pve as pve_integration
@@ -56,7 +57,7 @@ for mod in MODULES:
 # --- MCP server setup ---
 
 fortigate = FortiGateClient()
-app = Server("fortigate-mcp-server")
+app = Server("fortigate-mcp-server", version=__version__)
 
 
 @app.list_tools()

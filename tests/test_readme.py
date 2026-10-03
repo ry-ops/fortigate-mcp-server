@@ -64,3 +64,9 @@ def test_svg_animations_are_well_formed(svg):
     text = svg.read_text()
     assert "<script" not in text and "foreignObject" not in text, "GitHub strips scripts from SVGs"
     assert "prefers-reduced-motion" in text or "animate" not in text
+
+
+def test_server_reports_its_own_version():
+    from fortigate_mcp import server
+
+    assert server.app.version == __version__

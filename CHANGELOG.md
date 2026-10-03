@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-03
+
+### Fixed
+- The server reported the MCP SDK's version (1.30.0) to clients instead of its own.
+
 ## [0.4.0] - 2026-10-03
 
 ### Added
@@ -64,7 +69,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.1.0...v0.2.0

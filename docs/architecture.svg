@@ -45,7 +45,7 @@
   <!-- the server -->
   <rect x="262" y="34" width="320" height="332" rx="14" class="box"/>
   <text x="422" y="64" text-anchor="middle" class="sans" font-size="19" font-weight="700" fill="url(#title)">fortigate-mcp-server</text>
-  <text x="422" y="84" text-anchor="middle" class="mono" font-size="11" fill="#8b949e">v0.4.0 · 74 tools · 12 modules</text>
+  <text x="422" y="84" text-anchor="middle" class="mono" font-size="11" fill="#8b949e">v0.4.1 · 74 tools · 12 modules</text>
   <g class="mono" font-size="11">
     <rect x="278" y="98" width="92" height="26" rx="6" class="chip glow"/><text x="324" y="115" text-anchor="middle" fill="#e6edf3">system <tspan fill="#2dd4bf">12</tspan></text>
     <rect x="376" y="98" width="92" height="26" rx="6" class="chip glow d1"/><text x="422" y="115" text-anchor="middle" fill="#e6edf3">firewall <tspan fill="#2dd4bf">24</tspan></text>
