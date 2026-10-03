@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 400" width="900" height="400" role="img" aria-labelledby="t d">
+  <title id="t">How fortigate-mcp-server fits together</title>
+  <desc id="d">Claude talks MCP over stdio to fortigate-mcp-server, which calls the FortiGate's REST API with a bearer token and, when configured, reads the k3s cluster through a kubeconfig and Proxmox VE through a PVEAuditor token. Guard rails sit between the tools and every write.</desc>
+  <defs>
+    <pattern id="g" width="22" height="22" patternUnits="userSpaceOnUse"><path d="M22 0H0V22" fill="none" stroke="#161b22"/></pattern>
+    <linearGradient id="title" x1="0" x2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#58a6ff"/></linearGradient>
+    <path id="pc" d="M176 200H262"/>
+    <path id="pf" d="M582 112C616 112 616 112 650 112"/>
+    <path id="pk" d="M582 245C616 245 616 245 650 245"/>
+    <path id="pp" d="M582 327C616 327 616 327 650 327"/>
+    <style>
+      .sans{font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+      .mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+      .box{fill:#161b22;stroke:#30363d;stroke-width:1.5}
+      .wire{fill:none;stroke:#21262d;stroke-width:5;stroke-linecap:round}
+      .flow{fill:none;stroke:#2dd4bf;stroke-width:1.5;stroke-dasharray:3 9;animation:dash 1.2s linear infinite}
+      .flow.ro{stroke:#58a6ff}
+      @keyframes dash{to{stroke-dashoffset:-12}}
+      .chip{fill:#0d1117;stroke:#30363d}
+      .chip.opt{stroke:#58a6ff;stroke-dasharray:3 3}
+      .glow{animation:glow 6s ease-in-out infinite}
+      @keyframes glow{0%,100%{stroke:#30363d}8%{stroke:#2dd4bf}16%{stroke:#30363d}}
+      .d1{animation-delay:.5s}.d2{animation-delay:1s}.d3{animation-delay:1.5s}.d4{animation-delay:2s}.d5{animation-delay:2.5s}
+      .d6{animation-delay:3s}.d7{animation-delay:3.5s}.d8{animation-delay:4s}.d9{animation-delay:4.5s}.d10{animation-delay:5s}
+      .led{animation:led 1.6s steps(1) infinite}.l2{animation-delay:-.7s}
+      @keyframes led{0%,60%{opacity:1}61%,100%{opacity:.25}}
+      .pulse{animation:pulse 2.4s ease-in-out infinite}@keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+      @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+    </style>
+  </defs>
+  <rect x="1" y="1" width="898" height="398" rx="16" fill="#0d1117"/>
+  <rect x="1" y="1" width="898" height="398" rx="16" fill="url(#g)"/>
+
+  <!-- Claude -->
+  <rect x="24" y="150" width="152" height="100" rx="12" class="box"/>
+  <text x="100" y="186" text-anchor="middle" class="sans" font-size="20" font-weight="700" fill="#e6edf3">Claude</text>
+  <text x="100" y="208" text-anchor="middle" class="mono" font-size="11" fill="#8b949e">Code · Desktop</text>
+  <text x="100" y="228" text-anchor="middle" class="sans" font-size="11.5" fill="#8b949e">asks in plain English</text>
+
+  <use href="#pc" class="wire"/><use href="#pc" class="flow"/>
+  <text x="219" y="188" text-anchor="middle" class="mono" font-size="10.5" fill="#8b949e">MCP · stdio</text>
+  <circle r="4.5" fill="#2dd4bf"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#pc"/></animateMotion></circle>
+  <circle r="4.5" fill="#58a6ff"><animateMotion dur="1.8s" begin=".9s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#pc"/></animateMotion></circle>
+
+  <!-- the server -->
+  <rect x="262" y="34" width="320" height="332" rx="14" class="box"/>
+  <text x="422" y="64" text-anchor="middle" class="sans" font-size="19" font-weight="700" fill="url(#title)">fortigate-mcp-server</text>
+  <text x="422" y="84" text-anchor="middle" class="mono" font-size="11" fill="#8b949e">v0.4.0 · 74 tools · 12 modules</text>
+  <g class="mono" font-size="11">
+    <rect x="278" y="98" width="92" height="26" rx="6" class="chip glow"/><text x="324" y="115" text-anchor="middle" fill="#e6edf3">system <tspan fill="#2dd4bf">12</tspan></text>
+    <rect x="376" y="98" width="92" height="26" rx="6" class="chip glow d1"/><text x="422" y="115" text-anchor="middle" fill="#e6edf3">firewall <tspan fill="#2dd4bf">24</tspan></text>
+    <rect x="474" y="98" width="92" height="26" rx="6" class="chip glow d2"/><text x="520" y="115" text-anchor="middle" fill="#e6edf3">dns_dhcp <tspan fill="#2dd4bf">14</tspan></text>
+    <rect x="278" y="130" width="92" height="26" rx="6" class="chip glow d3"/><text x="324" y="147" text-anchor="middle" fill="#e6edf3">appctrl <tspan fill="#2dd4bf">5</tspan></text>
+    <rect x="376" y="130" width="92" height="26" rx="6" class="chip glow d4"/><text x="422" y="147" text-anchor="middle" fill="#e6edf3">security <tspan fill="#2dd4bf">4</tspan></text>
+    <rect x="474" y="130" width="92" height="26" rx="6" class="chip glow d5"/><text x="520" y="147" text-anchor="middle" fill="#e6edf3">network <tspan fill="#2dd4bf">4</tspan></text>
+    <rect x="278" y="162" width="92" height="26" rx="6" class="chip glow d6"/><text x="324" y="179" text-anchor="middle" fill="#e6edf3">nat <tspan fill="#2dd4bf">3</tspan></text>
+    <rect x="376" y="162" width="92" height="26" rx="6" class="chip glow d7"/><text x="422" y="179" text-anchor="middle" fill="#e6edf3">traffic <tspan fill="#2dd4bf">2</tspan></text>
+    <rect x="474" y="162" width="92" height="26" rx="6" class="chip glow d8"/><text x="520" y="179" text-anchor="middle" fill="#e6edf3">logs <tspan fill="#2dd4bf">1</tspan></text>
+    <rect x="278" y="194" width="92" height="26" rx="6" class="chip glow d9"/><text x="324" y="211" text-anchor="middle" fill="#e6edf3">raw <tspan fill="#2dd4bf">1</tspan></text>
+    <rect x="376" y="194" width="92" height="26" rx="6" class="chip opt"/><text x="422" y="211" text-anchor="middle" fill="#e6edf3">k8s <tspan fill="#58a6ff">3</tspan></text>
+    <rect x="474" y="194" width="92" height="26" rx="6" class="chip opt"/><text x="520" y="211" text-anchor="middle" fill="#e6edf3">pve <tspan fill="#58a6ff">1</tspan></text>
+  </g>
+  <text x="422" y="238" text-anchor="middle" class="mono" font-size="10" fill="#58a6ff">dashed = optional integration, read-only</text>
+
+  <line x1="278" y1="252" x2="566" y2="252" stroke="#30363d"/>
+  <text x="278" y="272" class="mono" font-size="11" fill="#8b949e">guard rails before every write</text>
+  <g class="sans" font-size="12" fill="#e6edf3">
+    <text x="284" y="294"><tspan fill="#3fb950">✓</tspan> read-only mode blocks every write</text>
+    <text x="284" y="314"><tspan fill="#3fb950">✓</tspan> syncs dry-run first · activation needs confirm</text>
+    <text x="284" y="334"><tspan fill="#3fb950">✓</tspan> checks up front, rollback when FortiOS refuses</text>
+    <text x="284" y="354"><tspan fill="#3fb950">✓</tspan> secrets from env/Keychain, never tool args</text>
+  </g>
+
+  <!-- FortiGate -->
+  <use href="#pf" class="wire"/><use href="#pf" class="flow"/>
+  <text x="616" y="100" text-anchor="middle" class="mono" font-size="9.5" fill="#8b949e">REST</text>
+  <circle r="4.5" fill="#2dd4bf"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pf"/></animateMotion></circle>
+  <circle r="4.5" fill="#58a6ff"><animateMotion dur="1.4s" begin=".7s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#pf"/></animateMotion></circle>
+  <rect x="650" y="34" width="226" height="156" rx="12" class="box"/>
+  <text x="666" y="62" class="sans" font-size="16" font-weight="700" fill="#e6edf3">FortiGate-VM</text>
+  <text x="666" y="80" class="mono" font-size="10.5" fill="#8b949e">FortiOS 7.6 · free VM license</text>
+  <text x="666" y="98" class="mono" font-size="10.5" fill="#8b949e">/api/v2 · Bearer token</text>
+  <g class="mono" font-size="11" fill="#e6edf3">
+    <rect x="666" y="112" width="194" height="28" rx="6" class="chip"/><circle cx="680" cy="126" r="4.5" fill="#3fb950" class="led"/><text x="692" y="130">port1 · WAN</text>
+    <rect x="666" y="146" width="194" height="28" rx="6" class="chip"/><circle cx="680" cy="160" r="4.5" fill="#3fb950" class="led l2"/><text x="692" y="164">port2 · LAN (k3s)</text>
+  </g>
+
+  <!-- k3s -->
+  <use href="#pk" class="wire"/><use href="#pk" class="flow ro"/>
+  <circle r="4" fill="#58a6ff"><animateMotion dur="2s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#pk"/></animateMotion></circle>
+  <rect x="650" y="214" width="226" height="62" rx="12" class="box" stroke-dasharray="4 3"/>
+  <text x="666" y="240" class="sans" font-size="15" font-weight="700" fill="#e6edf3">k3s cluster</text>
+  <text x="666" y="260" class="mono" font-size="10.5" fill="#8b949e">Ingress hosts · nodes</text>
+
+  <!-- Proxmox -->
+  <use href="#pp" class="wire"/><use href="#pp" class="flow ro"/>
+  <circle r="4" fill="#58a6ff"><animateMotion dur="2s" begin="1s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#pp"/></animateMotion></circle>
+  <rect x="650" y="296" width="226" height="62" rx="12" class="box" stroke-dasharray="4 3"/>
+  <text x="666" y="322" class="sans" font-size="15" font-weight="700" fill="#e6edf3">Proxmox VE</text>
+  <text x="666" y="342" class="mono" font-size="10.5" fill="#8b949e">VM by MAC · PVEAuditor token</text>
+  <circle cx="862" cy="230" r="4" fill="#58a6ff" class="pulse"/><circle cx="862" cy="312" r="4" fill="#58a6ff" class="pulse"/>
+
+  <rect x="1" y="1" width="898" height="398" rx="16" fill="none" stroke="#30363d"/>
+</svg>

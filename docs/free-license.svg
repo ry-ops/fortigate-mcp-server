@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 330" width="900" height="330" role="img" aria-labelledby="t d">
+  <title id="t">Built for the free FortiGate-VM license</title>
+  <desc id="d">The permanent evaluation license allows 1 vCPU, 2 GB of RAM and 3 policies, interfaces and static routes, shown as meters from the lab behind this README. Firewalling, NAT, port forwards, DNS, DHCP, certificate inspection and application control work; deep inspection and FortiGuard services do not. The tools work around the limits.</desc>
+  <defs>
+    <pattern id="g" width="22" height="22" patternUnits="userSpaceOnUse"><path d="M22 0H0V22" fill="none" stroke="#161b22"/></pattern>
+    <style>
+      .sans{font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+      .mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+      .track{fill:#21262d}
+      .pulse{animation:pulse 2.4s ease-in-out infinite}@keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+      @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+    </style>
+  </defs>
+  <rect x="1" y="1" width="898" height="328" rx="16" fill="#0d1117"/>
+  <rect x="1" y="1" width="898" height="328" rx="16" fill="url(#g)"/>
+
+  <text x="32" y="44" class="sans" font-size="19" font-weight="700" fill="#e6edf3">Built for the free FortiGate-VM license</text>
+  <text x="32" y="66" class="sans" font-size="13" fill="#8b949e">The permanent evaluation license never expires, but it is small. Every tool knows its limits.</text>
+
+  <!-- meters: bar widths fill to used/limit on a 10 s loop -->
+  <g class="mono" font-size="12">
+    <text x="32" y="104" fill="#e6edf3">policies</text><text x="404" y="104" text-anchor="end" fill="#d29922">3 / 3</text>
+    <rect x="32" y="112" width="372" height="10" rx="5" class="track"/>
+    <rect x="32" y="112" width="0" height="10" rx="5" fill="#d29922"><animate attributeName="width" values="0;372;372;0" keyTimes="0;.15;.9;1" dur="10s" repeatCount="indefinite"/></rect>
+
+    <text x="32" y="148" fill="#e6edf3">interfaces</text><text x="404" y="148" text-anchor="end" fill="#2dd4bf">2 / 3</text>
+    <rect x="32" y="156" width="372" height="10" rx="5" class="track"/>
+    <rect x="32" y="156" width="0" height="10" rx="5" fill="#2dd4bf"><animate attributeName="width" values="0;248;248;0" keyTimes="0;.15;.9;1" dur="10s" repeatCount="indefinite"/></rect>
+
+    <text x="32" y="192" fill="#e6edf3">static routes</text><text x="404" y="192" text-anchor="end" fill="#2dd4bf">0 / 3</text>
+    <rect x="32" y="200" width="372" height="10" rx="5" class="track"/>
+
+    <text x="32" y="236" fill="#e6edf3">vCPU · RAM</text><text x="404" y="236" text-anchor="end" fill="#58a6ff">1 / 1 · 2 / 2 GB</text>
+    <rect x="32" y="244" width="372" height="10" rx="5" class="track"/>
+    <rect x="32" y="244" width="0" height="10" rx="5" fill="#58a6ff"><animate attributeName="width" values="0;372;372;0" keyTimes="0;.15;.9;1" dur="10s" repeatCount="indefinite"/></rect>
+  </g>
+  <text x="32" y="284" class="mono" font-size="10.5" fill="#484f58">meters: the lab behind this README, from get_license_limits</text>
+
+  <!-- what works -->
+  <line x1="440" y1="88" x2="440" y2="300" stroke="#30363d"/>
+  <g class="sans" font-size="13.5">
+    <text x="468" y="102" class="mono" font-size="11" fill="#8b949e">works</text>
+    <text x="468" y="126" fill="#e6edf3"><tspan fill="#3fb950">✓</tspan>  policies, NAT, port forwards (VIPs)</text>
+    <text x="468" y="148" fill="#e6edf3"><tspan fill="#3fb950">✓</tspan>  DNS server, local zones, DHCP reservations</text>
+    <text x="468" y="170" fill="#e6edf3"><tspan fill="#3fb950">✓</tspan>  certificate inspection: HTTPS hostnames</text>
+    <text x="468" y="192" fill="#e6edf3"><tspan fill="#3fb950">✓</tspan>  app control with the bundled signatures</text>
+    <text x="468" y="222" class="mono" font-size="11" fill="#8b949e">does not</text>
+    <text x="468" y="246" fill="#e6edf3"><tspan fill="#f85149">✗</tspan>  deep inspection (RSA sites get 512-bit keys)</text>
+    <text x="468" y="268" fill="#e6edf3"><tspan fill="#f85149">✗</tspan>  FortiGuard AV / IPS / web filter, FortiCare</text>
+  </g>
+  <g class="mono" font-size="11">
+    <circle cx="474" cy="291" r="4" fill="#2dd4bf" class="pulse"/>
+    <text x="486" y="295" fill="#8b949e">and the tools work around the limits:</text>
+    <text x="486" y="313" fill="#2dd4bf">attach_to_policy<tspan fill="#8b949e"> · </tspan>service groups<tspan fill="#8b949e"> · </tspan>get_license_limits</text>
+  </g>
+  <rect x="1" y="1" width="898" height="328" rx="16" fill="none" stroke="#30363d"/>
+</svg>
