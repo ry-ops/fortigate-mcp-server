@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import time
 from pathlib import Path
@@ -107,9 +108,28 @@ TOOLS = [
         ),
         "inputSchema": schema({"hide": BOOL("true hides the step, false shows it again; omit to read")}),
     },
+    {
+        "name": "activate_vm_eval_license",
+        "description": (
+            "Activate the free permanent evaluation license on an unlicensed FortiGate-VM by logging "
+            "in to FortiCloud from the FortiGate (the same call the GUI makes). The FortiCloud "
+            "account comes from the FORTICLOUD_ACCOUNT and FORTICLOUD_PASSWORD environment variables, "
+            "never from tool arguments. The FortiGate reboots to apply it. Unlicensed VMs refuse "
+            "most API calls, so use session auth (FORTIGATE_USERNAME/PASSWORD) on a fresh VM. "
+            "FortiCare error 10 means wrong credentials, an IAM sub-user, or 2FA on the account."
+        ),
+        "inputSchema": schema(
+            {
+                "confirm": BOOL("Must be true: the FortiGate reboots"),
+                "is_government": BOOL("Government account (default false)"),
+            },
+            ["confirm"],
+        ),
+    },
 ]
 
 FORTICONVERTER_PROMPT = "/api/v2/monitor/forticonverter/show-in-startup"
+
 
 
 async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> Any:
@@ -184,5 +204,27 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
             # Undocumented endpoint used by the GUI (setPromptVisibility); the body is {"hide": bool}.
             await client.post(f"{FORTICONVERTER_PROMPT}/set", {"hide": bool(args["hide"])}, v)
         return results(await client.get(FORTICONVERTER_PROMPT, v))
+
+    elif name == "activate_vm_eval_license":
+        if args.get("confirm") is not True:
+            raise ValueError("Set confirm=true: activating the license reboots the FortiGate")
+        lic = results(await client.get("/api/v2/monitor/license/status", v))
+        vm = lic.get("vm", {}) if isinstance(lic, dict) else {}
+        if vm.get("valid"):
+            return {"status": "already_licensed", "vm": vm}
+        account = os.environ.get("FORTICLOUD_ACCOUNT", "")
+        password = os.environ.get("FORTICLOUD_PASSWORD", "")
+        if not account or not password:
+            raise ValueError("Set FORTICLOUD_ACCOUNT and FORTICLOUD_PASSWORD in the server's environment")
+        await client.post(
+            "/api/v2/monitor/system/vmlicense/download-eval",
+            {"account_id": account, "account_password": password,
+             "is_government": bool(args.get("is_government", False))},
+            v,
+        )
+        return {
+            "status": "success",
+            "note": "License downloaded; the FortiGate now reboots (about a minute). Check get_license_status afterwards.",
+        }
 
     raise ValueError(f"Unknown tool: {name}")

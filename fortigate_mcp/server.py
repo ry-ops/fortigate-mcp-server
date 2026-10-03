@@ -26,11 +26,11 @@ from mcp.server import Server
 from mcp.types import TextContent, Tool
 
 from .client import FORTIGATE_READ_ONLY, FortiGateClient, _validate_config
-from .tools import dns_dhcp, firewall, network, raw, system
+from .tools import dns_dhcp, firewall, logs, network, raw, security, system
 
 # --- Build unified tool registry ---
 
-MODULES = [system, firewall, network, dns_dhcp, raw]
+MODULES = [system, firewall, security, logs, network, dns_dhcp, raw]
 
 ALL_TOOLS: list[Tool] = []
 TOOL_MODULE: dict[str, Any] = {}

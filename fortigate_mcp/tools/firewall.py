@@ -42,12 +42,30 @@ POLICY_FIELDS = {
     "logtraffic": STR("all, utm or disable"),
     "status": STR("enable or disable"),
     "comments": STR("Comment"),
+    "ssl_ssh_profile": STR(
+        "SSL/SSH inspection profile: no-inspection, certificate-inspection (hostname/cert visibility, "
+        "no decryption) or deep-inspection / a custom profile (decrypts; clients must trust the CA)"
+    ),
+    "application_list": STR("Application control profile, e.g. default ('' to detach)"),
+    "ips_sensor": STR("IPS sensor ('' to detach)"),
+    "av_profile": STR("Antivirus profile ('' to detach)"),
+    "webfilter_profile": STR("Web filter profile ('' to detach)"),
+    "utm_status": BOOL(
+        "Enable security profiles on the policy. Turned on automatically when a profile is given"
+    ),
     "extra": EXTRA,
+}
+SECURITY_PROFILES = {
+    "application_list": "application-list",
+    "ips_sensor": "ips-sensor",
+    "av_profile": "av-profile",
+    "webfilter_profile": "webfilter-profile",
 }
 POLICY_MAP = {
     "name": "name", "srcintf": "srcintf", "dstintf": "dstintf", "srcaddr": "srcaddr",
     "dstaddr": "dstaddr", "service": "service", "action": "action", "schedule": "schedule",
     "logtraffic": "logtraffic", "status": "status", "comments": "comments",
+    "ssl_ssh_profile": "ssl-ssh-profile", **SECURITY_PROFILES,
 }
 POLICY_LISTS = ("srcintf", "dstintf", "srcaddr", "dstaddr", "service")
 
@@ -217,7 +235,28 @@ def _policy_body(args: dict[str, Any]) -> dict[str, Any]:
     data = body(args, POLICY_MAP, POLICY_LISTS)
     if "nat" in args and args["nat"] is not None:
         data["nat"] = "enable" if args["nat"] else "disable"
+    if args.get("utm_status") is not None:
+        data["utm-status"] = "enable" if args["utm_status"] else "disable"
+    elif any(args.get(arg) for arg in SECURITY_PROFILES):
+        data["utm-status"] = "enable"
     return data
+
+
+async def _inspection_warning(client: FortiGateClient, policyid: Any, v: dict[str, Any]) -> str | None:
+    """Flag the flow-mode trap: an SSL profile on a policy without any security profile does nothing."""
+    policy = one(await client.get(f"{POLICY}/{policyid}", v))
+    if not isinstance(policy, dict):
+        return None
+    ssl = policy.get("ssl-ssh-profile") or "no-inspection"
+    has_profile = policy.get("utm-status") == "enable" and any(
+        policy.get(attr) for attr in SECURITY_PROFILES.values()
+    )
+    if ssl != "no-inspection" and not has_profile:
+        return (
+            f"ssl-ssh-profile {ssl!r} has no effect: in flow mode traffic is only inspected when a "
+            "security profile is attached (e.g. application_list='default')."
+        )
+    return None
 
 
 async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> Any:
@@ -233,10 +272,19 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
         data = {"action": "accept", "schedule": "always", **_policy_body(args)}
         if args.get("policyid"):
             data["policyid"] = args["policyid"]
-        return write_result(await client.post(POLICY, data, v))
+        out = write_result(await client.post(POLICY, data, v))
+        if args.get("ssl_ssh_profile") and isinstance(out, dict) and out.get("mkey") is not None:
+            if warning := await _inspection_warning(client, out["mkey"], v):
+                out["warning"] = warning
+        return out
 
     elif name == "update_firewall_policy":
-        return write_result(await client.put(f"{POLICY}/{args['policyid']}", _policy_body(args), v))
+        out = write_result(await client.put(f"{POLICY}/{args['policyid']}", _policy_body(args), v))
+        touched = ("ssl_ssh_profile", "utm_status", *SECURITY_PROFILES)
+        if any(k in args for k in touched) and isinstance(out, dict):
+            if warning := await _inspection_warning(client, args["policyid"], v):
+                out["warning"] = warning
+        return out
 
     elif name == "delete_firewall_policy":
         return write_result(await client.delete(f"{POLICY}/{args['policyid']}", v))
