@@ -215,3 +215,100 @@ def test_pbkdf2_version_cutoffs():
     assert not _supports_pbkdf2((7, 4, 7)) and _supports_pbkdf2((7, 4, 8))
     assert not _supports_pbkdf2((7, 6, 0)) and _supports_pbkdf2((7, 6, 1))
     assert _supports_pbkdf2((8, 0, 0)) and not _supports_pbkdf2((7, 0, 17))
+
+
+def _lab_responses(rec):
+    """The lab FortiGate-VM as read on 2026-10-11: evaluation license, nothing hardened yet."""
+    rec.respond("GET", "/api/v2/monitor/system/status", 200, {"version": "v7.6.7", "results": {
+        "log_disk_status": "not_available"}})
+    rec.respond("GET", "/api/v2/monitor/license/status", 200, {"results": {
+        "vm": {"status": "vm_eval"}, "fortiguard": {"connected": False}}})
+    rec.respond("GET", "/api/v2/cmdb/system/admin", 200, {"results": [
+        {"name": "admin", "trusthost1": "0.0.0.0 0.0.0.0", "two-factor": "disable", "remote-auth": "disable"}]})
+    rec.respond("GET", "/api/v2/cmdb/system/api-user", 200, {"results": [
+        {"name": "mcp-api", "accprofile": "super_admin",
+         "trusthost": [{"ipv4-trusthost": "10.88.140.250 255.255.255.255"}]}]})
+    rec.respond("GET", "/api/v2/cmdb/system/interface", 200, {"results": [
+        {"name": "fortilink", "role": "undefined", "ip": "10.255.1.1 255.255.255.0", "allowaccess": "ping fabric"},
+        {"name": "port1", "role": "wan", "ip": "10.88.145.214 255.255.255.0", "allowaccess": "ping https ssh"},
+        {"name": "port2", "role": "lan", "ip": "192.168.150.1 255.255.255.0", "allowaccess": "ping https ssh"}]})
+    rec.respond("GET", "/api/v2/cmdb/firewall/local-in-policy", 200, {"results": [
+        {"policyid": 1, "status": "enable", "action": "deny", "intf": [{"name": "any"}], "srcaddr": [],
+         "service": [{"name": "ALL"}], "internet-service-src-name": [{"name": "Tor-Exit.Node"}]}]})
+    rec.respond("GET", "/api/v2/cmdb/system/password-policy", 200, {"results": {
+        "status": "enable", "minimum-length": 12, "reuse-password": "enable",
+        "login-lockout-upon-weaker-encryption": "disable"}})
+    rec.respond("GET", "/api/v2/cmdb/system/global", 200, {"results": {
+        "admin-telnet": "enable", "admin-forticloud-sso-login": "disable", "admintimeout": 5,
+        "admin-lockout-threshold": 3, "strong-crypto": "disable", "admin-https-ssl-versions": "tlsv1-2",
+        "ssl-min-proto-version": "SSLv3"}})
+    rec.respond("GET", "/api/v2/cmdb/vpn.ssl/settings", 200, {"results": {
+        "status": "enable", "port": 443, "source-interface": [], "ssl-min-proto-ver": "tls1-0"}})
+    rec.respond("GET", "/api/v2/cmdb/log/setting", 200, {"results": {
+        "fwpolicy-implicit-log": "disable", "local-in-deny-unicast": "disable"}})
+    for target in ("log.syslogd", "log.fortianalyzer", "log.fortiguard"):
+        rec.respond("GET", f"/api/v2/cmdb/{target}/setting", 200, {"results": {"status": "disable"}})
+    rec.respond("GET", "/api/v2/cmdb/system/ntp", 200, {"results": {
+        "server-mode": "enable", "interface": [{"interface-name": "fortilink"}]}})
+    rec.respond("GET", "/api/v2/cmdb/system.dhcp/server", 200, {"results": [
+        {"id": 1, "status": "enable", "interface": "port2", "ntp-service": "local"}]})
+    lab_conf = AUDIT_CONF.replace('    edit "stale"\n        set accprofile "super_admin"\n'
+                                  '        set password ENC SH2ghijkl\n    next\n', "")
+    rec.responses[("POST", "/api/v2/monitor/system/config/backup")] = httpx.Response(200, text=lab_conf)
+
+
+async def test_audit_hardening_reproduces_the_lab_review(fgt):
+    c, rec = fgt
+    _lab_responses(rec)
+    out = await system.handle("audit_hardening", {}, c)
+    got = {(f["severity"], f["check"], f["object"]) for f in out["findings"]}
+    assert got == {
+        ("critical", "wan_admin_access", "port1"),
+        ("warn", "admin_trusthosts", "admin"),
+        ("warn", "admin_mfa", "admin"),
+        ("warn", "legacy_hash", "admin"),
+        ("warn", "lan_admin_access", "port2"),
+        ("warn", "implicit_deny_log", "log setting"),
+        ("warn", "local_in_deny_log", "log setting"),
+        ("warn", "remote_logging", "log targets"),
+        ("info", "default_admin", "admin"),
+        ("info", "api_user_profile", "mcp-api"),
+        ("info", "local_in_admin", "port1"),
+        ("info", "local_in_admin", "port2"),
+        ("info", "admin_telnet", "system global"),
+        ("info", "strong_crypto", "system global"),
+        ("info", "admin_tls", "system global"),
+        ("info", "ssl_vpn", "vpn ssl settings"),
+        ("info", "password_policy", "password policy"),
+        ("info", "ntp_server", "fortilink"),
+        ("info", "ntp_server", "port2"),
+    }
+    assert out["license"] == "vm_eval" and out["not_applicable_on_evaluation_license"]
+    assert "memory only" in next(f["detail"] for f in out["findings"] if f["check"] == "remote_logging")
+    assert "evaluation license" in next(f["fix"] for f in out["findings"] if f["check"] == "admin_mfa")
+    # Changes that can't affect access come first; the legacy-hash lockout comes last.
+    orders = [int(line.split(".")[0]) for line in out["fix_plan"]]
+    assert orders == sorted(orders) and out["fix_plan"][-1].startswith("7. legacy_hash")
+    risky = {f["check"] for f in out["findings"] if f["lockout_risk"]}
+    assert {"lan_admin_access", "wan_admin_access", "admin_trusthosts", "local_in_admin"} <= risky
+    assert not {"implicit_deny_log", "ssl_vpn", "admin_telnet"} & risky
+    assert not any(r.method in ("PUT", "DELETE") for r in rec.requests)
+
+
+async def test_audit_hardening_listening_ssl_vpn_on_wan_and_licensed_fortiguard(fgt):
+    c, rec = fgt
+    _lab_responses(rec)
+    rec.respond("GET", "/api/v2/monitor/license/status", 200, {"results": {
+        "vm": {"status": "vm_valid"}, "fortiguard": {"connected": False}}})
+    rec.respond("GET", "/api/v2/cmdb/vpn.ssl/settings", 200, {"results": {
+        "status": "enable", "port": 443, "source-interface": [{"name": "port1"}], "ssl-min-proto-ver": "tls1-2"}})
+    rec.respond("GET", "/api/v2/cmdb/firewall/local-in-policy", 200, {"results": [
+        {"policyid": 2, "status": "enable", "action": "deny", "intf": [{"name": "port1"}],
+         "srcaddr": [{"name": "all"}], "service": [{"name": "HTTPS"}, {"name": "SSH"}]}]})
+    out = await system.handle("audit_hardening", {"check_hashes": False}, c)
+    got = {(f["severity"], f["check"], f["object"]) for f in out["findings"]}
+    assert ("critical", "ssl_vpn", "vpn ssl settings") in got
+    assert ("warn", "fortiguard", "FortiGuard") in got
+    assert ("warn", "strong_crypto", "system global") in got
+    assert ("info", "local_in_admin", "port1") not in got and ("info", "local_in_admin", "port2") in got
+    assert "not_applicable_on_evaluation_license" not in out

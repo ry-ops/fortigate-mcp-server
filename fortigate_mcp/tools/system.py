@@ -28,6 +28,7 @@ from ._common import (
     vdom_param,
     write_result,
 )
+from ._hardening import EVAL_NOT_APPLICABLE, annotate, fix_plan, hardening_checks
 
 TOOLS = [
     {
@@ -108,6 +109,21 @@ TOOLS = [
             "of PBKDF2. Returns findings graded critical/warn/info, each with a suggested fix. The "
             "hash check reads a config backup, which the FortiGate logs as a config download; set "
             "check_hashes=false to skip it."
+        ),
+        "inputSchema": schema(
+            {"check_hashes": BOOL("Check stored password hashes via a config backup (default true)")}
+        ),
+    },
+    {
+        "name": "audit_hardening",
+        "description": (
+            "Read-only hardening audit: everything audit_admin_access checks, plus admin access on "
+            "LAN interfaces, local-in coverage, telnet, FortiCloud SSO, crypto and TLS settings, SSL "
+            "VPN, logging (implicit deny, local-in denies, remote targets), password policy and NTP. "
+            "Each finding carries the order to fix it in and whether the fix can cut off admin access, "
+            "and fix_plan lists them in that order. On the evaluation license it lists the FortiGuard "
+            "features that don't apply and what to rely on instead. check_hashes reads a config "
+            "backup, as in audit_admin_access."
         ),
         "inputSchema": schema(
             {"check_hashes": BOOL("Check stored password hashes via a config backup (default true)")}
@@ -316,6 +332,38 @@ async def audit_admin_access(
     return {"firmware": firmware, "summary": counts, "findings": findings, "local_in_policies": policies}
 
 
+async def audit_hardening(
+    client: FortiGateClient, v: dict[str, Any], check_hashes: bool = True
+) -> dict[str, Any]:
+    admin = await audit_admin_access(client, v, check_hashes)
+    try:
+        lic = results(await client.get("/api/v2/monitor/license/status", v))
+    except FortiGateAPIError:
+        lic = {}
+    vm = lic.get("vm", {}) if isinstance(lic, dict) else {}
+    fortiguard = lic.get("fortiguard", {}) if isinstance(lic, dict) else {}
+    is_eval = vm.get("status") == "vm_eval"
+    admins_open = any(f["check"] == "admin_trusthosts" for f in admin["findings"])
+
+    findings = admin["findings"] + await hardening_checks(client, v, is_eval, admins_open)
+    if not is_eval and isinstance(fortiguard, dict) and fortiguard.get("connected") is False:
+        findings.append({"severity": "warn", "check": "fortiguard", "object": "FortiGuard",
+                         "detail": "Not connected to FortiGuard, so signatures and ratings are going stale",
+                         "fix": "Check DNS, the route to the internet and the FortiGuard contract"})
+    findings = annotate(findings, is_eval)
+    out: dict[str, Any] = {
+        "firmware": admin["firmware"],
+        "license": vm.get("status"),
+        "summary": {s: sum(f["severity"] == s for f in findings) for s in SEVERITY},
+        "findings": findings,
+        "fix_plan": fix_plan(findings),
+        "local_in_policies": admin["local_in_policies"],
+    }
+    if is_eval:
+        out["not_applicable_on_evaluation_license"] = EVAL_NOT_APPLICABLE
+    return out
+
+
 
 async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> Any:
     v = vdom_param(args)
@@ -374,6 +422,9 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
 
     elif name == "audit_admin_access":
         return await audit_admin_access(client, v, args.get("check_hashes", True))
+
+    elif name == "audit_hardening":
+        return await audit_hardening(client, v, args.get("check_hashes", True))
 
     elif name == "backup_config":
         text = await _backup_text(client, v)

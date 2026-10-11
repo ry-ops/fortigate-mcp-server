@@ -11,7 +11,8 @@ and the FortiOS details that matter.
    Compare the version with the advisory's fixed releases.
 2. **Admin access.** `audit_admin_access` covers most credential-campaign advisories: admins
    without trusted hosts or MFA, admin access on WAN interfaces, API keys, and SHA-256 password
-   hashes.
+   hashes. `audit_hardening` adds the rest of the baseline (logging, crypto, SSL VPN, LAN-side
+   admin access) and orders the fixes so the ones that can lock you out come last.
 3. **Accounts the advisory names.** `fortigate_api` GET on `/api/v2/cmdb/system/admin`,
    `/api/v2/cmdb/system/api-user`, `/api/v2/cmdb/user/local` and `/api/v2/cmdb/user/ldap`.
    An admin you don't recognise matters more than an exact name match.

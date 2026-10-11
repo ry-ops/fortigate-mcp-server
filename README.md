@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.svg" alt="ry-ops /fortigate-mcp-server: manage a FortiGate firewall from Claude with 75 MCP tools" width="100%"></p>
+<p align="center"><img src="docs/banner.svg" alt="ry-ops /fortigate-mcp-server: manage a FortiGate firewall from Claude with 76 MCP tools" width="100%"></p>
 
 <p align="center">
   <a href="https://github.com/ry-ops/fortigate-mcp-server/releases"><img src="https://img.shields.io/github/v/release/ry-ops/fortigate-mcp-server?color=2dd4bf&label=release" alt="Latest release"></a>
@@ -156,9 +156,9 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 
 <!-- TOOLS:START -->
 
-**75 tools** in 12 areas. Expand an area for one line per tool; your MCP client shows each tool's full description and input schema.
+**76 tools** in 12 areas. Expand an area for one line per tool; your MCP client shows each tool's full description and input schema.
 
-<details><summary><b>System, license and interfaces</b> · 13</summary>
+<details><summary><b>System, license and interfaces</b> · 14</summary>
 
 | Tool | What it does |
 |---|---|
@@ -172,6 +172,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 | `update_interface` | Update an interface. |
 | `list_admin_sessions` | Administrators currently logged in (GUI, SSH, API) and where from. |
 | `audit_admin_access` | Read-only audit of how the FortiGate can be administered: admins without trusted hosts or MFA, the default 'admin' account, API keys, HTTPS/SSH/HTTP/telnet admin access on WAN interfaces, local-in policies, and admin passwords still stored as legacy SHA-256 instead of PBKDF2. |
+| `audit_hardening` | Read-only hardening audit: everything audit_admin_access checks, plus admin access on LAN interfaces, local-in coverage, telnet, FortiCloud SSO, crypto and TLS settings, SSL VPN, logging (implicit deny, local-in denies, remote targets), password policy and NTP. |
 | `backup_config` | Back up the full running configuration (FortiOS CLI text) to a local file and return its path and size. |
 | `forticonverter_setup_prompt` | Show or hide the 'Migrate Config with FortiConverter' step of the GUI's FortiGate Setup popup. |
 | `activate_vm_eval_license` | Activate the free permanent evaluation license on an unlicensed FortiGate-VM by logging in to FortiCloud from the FortiGate (the same call the GUI makes). |

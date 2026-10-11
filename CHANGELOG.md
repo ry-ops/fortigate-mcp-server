@@ -13,6 +13,13 @@ All notable changes to this project are documented here. The format is based on
   firmware older than the PBKDF2 releases (7.2.11, 7.4.8, 7.6.1), and admin passwords still
   stored as SHA-256 (read from a config backup; `check_hashes=false` skips it). Findings are
   graded critical/warn/info with a suggested fix.
+- `audit_hardening`: a read-only hardening audit that runs `audit_admin_access` and adds admin
+  access on LAN interfaces, local-in coverage, global telnet, FortiCloud SSO, `strong-crypto` and
+  TLS minimums, SSL VPN state, logging (implicit deny, local-in denies, remote targets), password
+  policy, and NTP (including DHCP handing out the FortiGate as NTP server where it doesn't answer).
+  Every finding carries a fix order and a `lockout_risk` flag, and `fix_plan` lists the fixes so
+  the changes that can't affect access come first. On the evaluation license it lists the
+  FortiGuard features that don't apply and what to rely on instead.
 
 ### Changed
 - `get_logs` takes a list of filter terms, sent as separate `filter` parameters, which FortiOS
