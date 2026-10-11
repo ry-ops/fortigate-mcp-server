@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-11
+
+### Changed
+- Built on MCP Python SDK 2.x (`mcp>=2.3.0,<3`; was `<2`). Handlers are registered in the
+  `Server` constructor, which replaces the 1.x decorators. Nothing changes for MCP clients.
+- Tool arguments are still checked against each tool's input schema before anything reaches
+  the FortiGate. SDK 2.x no longer does this, so the server does it with `jsonschema`, now a
+  direct dependency.
+- Failed tool calls now set `isError` on the result, so clients can tell an error from data.
+
 ## [0.12.0] - 2026-10-11
 
 ### Security
@@ -205,7 +215,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.9.0...v0.10.0

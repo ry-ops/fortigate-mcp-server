@@ -21,9 +21,17 @@ import json
 import sys
 from typing import Any
 
+import jsonschema
 import mcp.server.stdio
-from mcp.server import Server
-from mcp.types import TextContent, Tool
+from mcp.server import Server, ServerRequestContext
+from mcp.types import (
+    CallToolRequestParams,
+    CallToolResult,
+    ListToolsResult,
+    PaginatedRequestParams,
+    TextContent,
+    Tool,
+)
 
 from . import __version__
 from .client import FORTIGATE_READ_ONLY, FortiGateClient, _validate_config
@@ -73,25 +81,34 @@ for mod in MODULES:
 # --- MCP server setup ---
 
 fortigate = FortiGateClient()
-app = Server("fortigate-mcp-server", version=__version__)
+SCHEMAS = {t.name: t.input_schema for t in ALL_TOOLS}
 
 
-@app.list_tools()
-async def list_tools() -> list[Tool]:
-    return ALL_TOOLS
+def _text(payload: Any, error: bool = False) -> CallToolResult:
+    return CallToolResult(content=[TextContent(type="text", text=json.dumps(payload, indent=2))], is_error=error)
 
 
-@app.call_tool()
-async def call_tool(name: str, arguments: Any) -> list[TextContent]:
+async def list_tools(ctx: ServerRequestContext, params: PaginatedRequestParams | None) -> ListToolsResult:
+    return ListToolsResult(tools=ALL_TOOLS)
+
+
+async def call_tool(ctx: ServerRequestContext, params: CallToolRequestParams) -> CallToolResult:
+    name, arguments = params.name, params.arguments or {}
     try:
         mod = TOOL_MODULE.get(name)
         if mod is None:
             raise ValueError(f"Unknown tool: {name}")
-        result = await mod.handle(name, arguments or {}, fortigate)
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        # mcp 1.x checked arguments against the tool's inputSchema before calling it; 2.x leaves it to us.
+        try:
+            jsonschema.validate(arguments, SCHEMAS[name])
+        except jsonschema.ValidationError as e:
+            raise ValueError(f"Input validation error: {e.message}") from None
+        return _text(await mod.handle(name, arguments, fortigate))
     except Exception as e:
-        error = {"error": str(e), "tool": name}
-        return [TextContent(type="text", text=json.dumps(error, indent=2))]
+        return _text({"error": str(e), "tool": name}, error=True)
+
+
+app = Server("fortigate-mcp-server", version=__version__, on_list_tools=list_tools, on_call_tool=call_tool)
 
 
 async def main() -> None:

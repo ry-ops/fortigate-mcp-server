@@ -1,6 +1,6 @@
 [project]
 name = "fortigate-mcp-server"
-version = "0.12.0"
+version = "0.13.0"
 description = "MCP server for managing Fortinet FortiGate firewalls (FortiOS REST API) with AI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,8 +17,9 @@ classifiers = [
     "Topic :: System :: Networking :: Firewalls",
 ]
 dependencies = [
-    # mcp 2.x removed the @app.list_tools()/@app.call_tool() decorator API used in server.py.
-    "mcp>=1.0.0,<2",
+    # 2.x registers handlers in the Server constructor; the 1.x decorators are gone.
+    "mcp>=2.3.0,<3",
+    "jsonschema>=4.20.0",
     "httpx>=0.28.1",
     "python-dotenv>=1.2.3",
     "pyyaml>=6.0",
