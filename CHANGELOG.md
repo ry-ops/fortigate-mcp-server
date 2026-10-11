@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-11
+
+### Added
+- `get_log_targets`: where logs go (up to 4 syslog servers, up to 3 FortiAnalyzers, FortiGuard
+  Cloud, disk and memory). It flags memory-only logging, cleartext syslog and FortiAnalyzer
+  without certificate verification.
+- `set_syslog_target`: point a syslog slot at a collector over UDP, TCP or TLS. Validated
+  against the schema; dry run by default.
+- `get_ha_status`: HA mode, members and configuration sync. It flags out-of-sync members,
+  unencrypted or unauthenticated heartbeats, a single heartbeat interface and no session
+  pickup.
+- `list_fortitokens`: tokens and their status, and which administrators use which second
+  factor.
+- `set_admin_mfa`: FortiToken, email or SMS two-factor for an administrator. It checks the
+  prerequisites first (an active token, a configured email server) and defaults to a dry run.
+
 ## [0.9.0] - 2026-10-11
 
 ### Added
@@ -163,7 +179,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.6.0...v0.7.0

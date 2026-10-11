@@ -45,15 +45,15 @@
   <!-- the server -->
   <rect x="262" y="34" width="320" height="332" rx="14" class="box"/>
   <text x="422" y="64" text-anchor="middle" class="sans" font-size="19" font-weight="700" fill="url(#title)">fortigate-mcp-server</text>
-  <text x="422" y="84" text-anchor="middle" class="mono" font-size="11" fill="#8b949e">v0.9.0 · 87 tools · 15 modules</text>
+  <text x="422" y="84" text-anchor="middle" class="mono" font-size="11" fill="#8b949e">v0.10.0 · 92 tools · 15 modules</text>
   <g class="mono" font-size="11">
-    <rect x="278" y="98" width="92" height="26" rx="6" class="chip glow"/><text x="324" y="115" text-anchor="middle" fill="#e6edf3">system <tspan fill="#2dd4bf">15</tspan></text>
+    <rect x="278" y="98" width="92" height="26" rx="6" class="chip glow"/><text x="324" y="115" text-anchor="middle" fill="#e6edf3">system <tspan fill="#2dd4bf">18</tspan></text>
     <rect x="376" y="98" width="92" height="26" rx="6" class="chip glow d1"/><text x="422" y="115" text-anchor="middle" fill="#e6edf3">firewall <tspan fill="#2dd4bf">24</tspan></text>
     <rect x="474" y="98" width="92" height="26" rx="6" class="chip glow d2"/><text x="520" y="115" text-anchor="middle" fill="#e6edf3">dns_dhcp <tspan fill="#2dd4bf">14</tspan></text>
     <rect x="278" y="130" width="92" height="26" rx="6" class="chip glow d3"/><text x="324" y="147" text-anchor="middle" fill="#e6edf3">appctrl <tspan fill="#2dd4bf">5</tspan></text>
     <rect x="376" y="130" width="92" height="26" rx="6" class="chip glow d4"/><text x="422" y="147" text-anchor="middle" fill="#e6edf3">security <tspan fill="#2dd4bf">4</tspan></text>
     <rect x="474" y="130" width="92" height="26" rx="6" class="chip glow d5"/><text x="520" y="147" text-anchor="middle" fill="#e6edf3">network <tspan fill="#2dd4bf">4</tspan></text>
-    <rect x="278" y="162" width="92" height="26" rx="6" class="chip glow d6"/><text x="324" y="179" text-anchor="middle" font-size="10" fill="#e6edf3">nat <tspan fill="#2dd4bf">3</tspan> · logs <tspan fill="#2dd4bf">1</tspan></text>
+    <rect x="278" y="162" width="92" height="26" rx="6" class="chip glow d6"/><text x="324" y="179" text-anchor="middle" font-size="10" fill="#e6edf3">nat <tspan fill="#2dd4bf">3</tspan> · logs <tspan fill="#2dd4bf">3</tspan></text>
     <rect x="376" y="162" width="92" height="26" rx="6" class="chip glow d7"/><text x="422" y="179" text-anchor="middle" fill="#e6edf3">fortiguard <tspan fill="#2dd4bf">3</tspan></text>
     <rect x="474" y="162" width="92" height="26" rx="6" class="chip glow d8"/><text x="520" y="179" text-anchor="middle" fill="#e6edf3">traffic <tspan fill="#2dd4bf">2</tspan></text>
     <rect x="278" y="194" width="92" height="26" rx="6" class="chip glow d9"/><text x="324" y="211" text-anchor="middle" font-size="9.5" fill="#e6edf3">config <tspan fill="#2dd4bf">5</tspan> · raw <tspan fill="#2dd4bf">1</tspan></text>
