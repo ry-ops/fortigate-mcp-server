@@ -6,6 +6,29 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-10-11
+
+The first 1.x release. Versions 1.0.0 to 1.1.2 were never published.
+
+### Added
+- `get_system_status` returns `uptime`, `uptime_seconds` and `last_reboot`. Its description
+  promised uptime, but FortiOS's `system/status` doesn't include it; it now comes from the
+  same `web-ui/state` reboot time the GUI uses.
+
+### Fixed
+- Three entries in the README tool catalog (`create_service_group`, `list_app_categories`,
+  `k8s_cluster_overview`) were cut off at "e.g.". The catalog generator no longer treats
+  "e.g." or "i.e." as the end of a sentence.
+
+### Changed
+- README: the pitch now covers the hardening audits, schema-driven access to every FortiOS
+  setting, licensed-unit support, TLS verification and argument validation.
+- Development dependencies moved from the deprecated `tool.uv.dev-dependencies` to
+  `[dependency-groups]`. Package metadata lists the supported Python versions and a stable
+  status.
+- Test files named after development rounds were renamed by topic
+  (`test_limits_nat_appctrl.py`, `test_logs_certs_audits.py`).
+
 ## [0.13.0] - 2026-10-11
 
 ### Changed
@@ -215,7 +238,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.13.0...v1.1.3
 [0.13.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.10.0...v0.11.0

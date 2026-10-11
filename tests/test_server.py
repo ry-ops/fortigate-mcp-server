@@ -36,6 +36,15 @@ async def test_call_returns_json(rec):
         assert json.loads(result.content[0].text)["hostname"] == "fgt-lab"
 
 
+async def test_status_reports_uptime(rec):
+    rec.respond("GET", "/api/v2/monitor/web-ui/state", 200, {"results": {
+        "utc_last_reboot": 1791030164000, "snapshot_utc_time": 1791030164000 + (8 * 86400 + 3 * 3600 + 5 * 60) * 1000}})
+    async with connect() as client:
+        out = json.loads((await client.call_tool("get_system_status", {})).content[0].text)
+        assert out["uptime"] == "8d 3h 5m" and out["uptime_seconds"] == 702300
+        assert out["last_reboot"] == "2026-10-03T12:22:44Z"
+
+
 async def test_invalid_arguments_are_refused_before_the_fortigate(rec):
     async with connect() as client:
         result = await client.call_tool("get_address", {})

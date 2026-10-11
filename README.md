@@ -9,16 +9,18 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3fb950" alt="MIT license"></a>
 </p>
 
-**fortigate-mcp-server** lets Claude (or any [MCP](https://modelcontextprotocol.io) client) run a Fortinet FortiGate through the FortiOS REST API: firewall policies, NAT and port forwards, DNS and DHCP, application control, inspection, live traffic and logs. It was built and tested against a FortiGate-VM on the **free permanent evaluation license** fronting a k3s cluster on Proxmox, so it knows that license's limits and FortiOS 7.6's quirks, and it can connect the firewall to the cluster and to the hypervisor around it.
+**fortigate-mcp-server** lets Claude (or any [MCP](https://modelcontextprotocol.io) client) run a Fortinet FortiGate through the FortiOS REST API: firewall policies, NAT and port forwards, DNS and DHCP, application control, inspection, live traffic and logs. It also audits the firewall's security, and it can reach every setting FortiOS has. It was built and tested against a FortiGate-VM on the **free permanent evaluation license** fronting a k3s cluster on Proxmox, so it knows that license's limits and FortiOS 7.6's quirks, and it can connect the firewall to the cluster and to the hypervisor around it. Licensed VMs and hardware units are supported too.
 
 <p align="center"><img src="docs/demo.svg" alt="A Claude Code session: top bandwidth users labelled with their Proxmox VM, a Kubernetes Ingress hostname synced into FortiGate DNS, and a port forward refused before anything was created" width="100%"></p>
 
 ## What makes it different
 
+- **A security review in one call.** `audit_hardening` checks admin access, local-in policies, crypto and TLS settings, SSL VPN, logging, password policy, FortiGuard updates, policy protection and HA. It returns findings in the order to fix them and marks the fixes that could lock you out. `audit_admin_access` and `audit_policy_protection` go deeper on their areas, and [checking against an advisory](docs/threat-hunting.md) shows how to hunt for a published campaign with the same read-only tools.
+- **Every FortiOS setting, not just the common ones.** Besides the dedicated tools, `search_api`, `describe_config`, `get_config`, `set_config` and `get_monitor` work from the FortiGate's own API schema, so Claude can find and change anything the firmware has (BGP, SD-WAN, IPsec, VDOMs). `set_config` validates every field against that schema and dry-runs first.
 - **Built for the free FortiGate-VM.** The permanent evaluation license allows 3 policies, 3 interfaces and 3 static routes, has no FortiGuard services and runs in low-encryption mode. `get_license_limits` shows what is used; port forwards attach to existing policies instead of needing new ones; service groups fold several ports into one policy; and this README says what does not work there (deep inspection) before you lose an afternoon to it.
 - **It knows FortiOS 7.6's traps.** VIPs cannot share a policy with ordinary addresses, app-control profiles start with a catch-all pass rule, DHCP reservations need `action=reserved`, `vci-match` silently ignores normal clients, and local DNS zones cannot hold wildcards. The tools check for these up front and say so plainly. See [FortiOS 7.6 field notes](#fortios-76-field-notes).
 - **It speaks your infrastructure.** Optional integrations read your k3s cluster (Ingress hostnames become FortiGate DNS records; node IPs keep the address objects your policies use in sync) and your Proxmox VE host (every IP and MAC in leases, sessions, FortiView and logs gets the name of the VM behind it).
-- **Safe by default.** A read-only switch refuses every write before it leaves your machine; sync tools dry-run first; license activation needs `confirm=true`; a failed port forward rolls itself back; credentials come from the environment (or your keychain), never from tool arguments.
+- **Safe by default.** A read-only switch refuses every write before it leaves your machine; TLS certificates are verified; tool arguments are checked against their schema before anything is sent; sync tools dry-run first; license activation needs `confirm=true`; a failed port forward rolls itself back; credentials come from the environment (or your keychain), never from tool arguments.
 - **Errors that explain.** FortiOS hides the reason for a failure in the response body (`cli_error`). Every error message includes it, so "HTTP 500" becomes "Addresses/groups cannot be mixed with virtual IPs".
 - **Tested against a real FortiGate.** Every tool was run against FortiOS 7.6.7 on a FortiGate-VM, on top of a unit-test suite that runs in CI on Python 3.10 to 3.13.
 
@@ -56,7 +58,7 @@ claude mcp add fortigate --scope user \
   -e FORTIGATE_HOST=192.168.1.99 \
   -e FORTIGATE_API_TOKEN=your-token \
   -e FORTIGATE_READ_ONLY=true \
-  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.13.0 fortigate-mcp-server
+  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v1.1.3 fortigate-mcp-server
 ```
 
 On macOS you can keep the token in your Keychain instead of in Claude's config:
@@ -65,7 +67,7 @@ On macOS you can keep the token in your Keychain instead of in Claude's config:
 security add-generic-password -a mcp-api -s fortigate-api-token -w   # paste the token when asked
 
 claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGATE_READ_ONLY=true -- \
-  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.13.0 fortigate-mcp-server'
+  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v1.1.3 fortigate-mcp-server'
 ```
 
 **TLS.** The server verifies the FortiGate's certificate by default. A factory certificate won't pass, so either:
@@ -81,7 +83,7 @@ Trusting the FortiGate's own `Fortinet_CA_SSL` doesn't work on evaluation VMs: i
   "mcpServers": {
     "fortigate": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.13.0", "fortigate-mcp-server"],
+      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v1.1.3", "fortigate-mcp-server"],
       "env": {
         "FORTIGATE_HOST": "192.168.1.99",
         "FORTIGATE_API_TOKEN": "your-token",
@@ -111,6 +113,8 @@ Start read-only and look around:
 - *"Show the firewall policies and how often each one is hit."*
 - *"Who is using the most bandwidth right now?"*
 - *"Which HTTPS sites did 192.168.150.11 visit in the last few minutes?"*
+- *"Run a hardening audit and tell me what to fix first."*
+- *"Here's a Fortinet PSIRT advisory. Is this FortiGate affected, and do the logs show anything?"*
 - *"Back up the running config."* (allowed in read-only mode; it writes a local file)
 
 When you want Claude to make changes, set `FORTIGATE_READ_ONLY=false`.
@@ -235,7 +239,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 | `list_services` | List custom firewall services (port definitions). |
 | `create_service` | Create a custom TCP/UDP service. |
 | `list_service_groups` | List service groups and their members. |
-| `create_service_group` | Create a service group, e.g. |
+| `create_service_group` | Create a service group, e.g. K3S-MGMT = [SSH, K8S-API, PING]. |
 | `update_service_group` | Update a service group. members replaces the whole member list. |
 | `delete_service_group` | Delete a service group (fails while a policy still uses it). |
 | `delete_service` | Delete a custom service (fails while a policy still uses it). |
@@ -257,7 +261,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 | Tool | What it does |
 |---|---|
 | `search_applications` | Search application-control signatures by name (contains, case-insensitive) and/or category, e.g. query=YouTube or category=P2P. |
-| `list_app_categories` | Application-control categories (id and name), e.g. |
+| `list_app_categories` | Application-control categories (id and name), e.g. P2P, Proxy, Game, Video/Audio. |
 | `list_app_control_profiles` | App-control profiles with their rules, showing application and category names instead of ids. |
 | `add_app_control_rule` | Add a rule to an app-control profile matching applications and/or categories by name (or id). |
 | `delete_app_control_rule` | Remove a rule from an app-control profile by its id (see list_app_control_profiles). |
@@ -339,7 +343,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 
 | Tool | What it does |
 |---|---|
-| `k8s_cluster_overview` | Read the Kubernetes cluster from K8S_KUBECONFIG: nodes with IPs and readiness, LoadBalancer services with their IPs (e.g. |
+| `k8s_cluster_overview` | Read the Kubernetes cluster from K8S_KUBECONFIG: nodes with IPs and readiness, LoadBalancer services with their IPs (e.g. Traefik on k3s ServiceLB) and every Ingress or Traefik IngressRoute hostname. |
 | `k8s_sync_ingress_dns` | Create FortiGate DNS records for the cluster's Ingress hostnames that fall inside a local zone (e.g. whoami.lab in zone 'lab'), pointing at the IPs the ingress is served on. |
 | `k8s_sync_node_addresses` | Keep a FortiGate address object in step with the cluster's node IPs so policies follow the cluster. |
 
@@ -382,6 +386,8 @@ Tools take friendly arguments and build the FortiOS body for you: CIDR (`10.0.0.
 | Guard | What it does |
 |---|---|
 | `FORTIGATE_READ_ONLY=true` | The client refuses every POST, PUT and DELETE before it reaches the FortiGate. The only exception is `backup_config`, whose POST only reads. Pair it with a read-only admin profile so FortiOS enforces the same thing. |
+| TLS verification | Certificates are verified by default (`FORTIGATE_VERIFY_SSL`, `PROXMOX_VERIFY_SSL`), optionally against your own CA bundle. Turning it off prints a warning at startup. |
+| Argument validation | Every tool call is checked against the tool's input schema before any request is made. |
 | Dry runs | `set_config`, `k8s_sync_ingress_dns` and `k8s_sync_node_addresses` show their plan unless `dry_run=false`. `set_config` also validates every field against the FortiGate's own schema first. |
 | Confirmation | `activate_vm_eval_license` reboots the FortiGate, so it requires `confirm=true`, and does nothing on a licensed VM. |
 | Checks before writes | `create_port_forward` checks the target policy's interface and destinations before creating the VIP; wildcard DNS records and edits to read-only built-in profiles are refused up front. |
@@ -433,7 +439,7 @@ Variables can also go in a `.env` file next to the server; see [`.env.example`](
 
 ## Releases and versioning
 
-Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.13.0`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
+Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v1.1.3`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
 
 ## Development
 

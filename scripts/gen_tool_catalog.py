@@ -53,8 +53,8 @@ START, END = "<!-- TOOLS:START -->", "<!-- TOOLS:END -->"
 
 
 def first_sentence(text: str) -> str:
-    # Split at ". " followed by a capital letter so "e.g. foo" stays intact.
-    head = re.split(r"(?<=[.!?])\s+(?=[A-Z])", " ".join(text.split()), maxsplit=1)[0]
+    # Split at ". " followed by a capital letter, but not after "e.g." or "i.e." ("e.g. YouTube").
+    head = re.split(r"(?<!e\.g\.)(?<!i\.e\.)(?<=[.!?])\s+(?=[A-Z])", " ".join(text.split()), maxsplit=1)[0]
     return head.replace("|", "\\|")
 
 

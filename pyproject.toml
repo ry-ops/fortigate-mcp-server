@@ -1,19 +1,23 @@
 [project]
 name = "fortigate-mcp-server"
-version = "0.13.0"
+version = "1.1.3"
 description = "MCP server for managing Fortinet FortiGate firewalls (FortiOS REST API) with AI"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "ry-ops", email = ""},
+    {name = "ry-ops"},
 ]
-keywords = ["mcp", "fortigate", "fortios", "fortinet", "firewall", "model-context-protocol", "claude"]
+keywords = ["mcp", "fortigate", "fortios", "fortinet", "firewall", "model-context-protocol", "claude", "security-audit", "kubernetes", "proxmox"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: System Administrators",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: System :: Networking :: Firewalls",
 ]
 dependencies = [
@@ -40,8 +44,8 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["fortigate_mcp"]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "ruff>=0.3.0",

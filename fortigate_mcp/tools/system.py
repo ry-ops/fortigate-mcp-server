@@ -414,6 +414,17 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
             out = {k: resp[k] for k in ("serial", "version", "build") if k in resp}
         res = results(resp)
         out.update(res if isinstance(res, dict) else {"results": res})
+        # system/status has no uptime; the GUI computes it from web-ui/state's reboot time.
+        try:
+            ui = results(await client.get("/api/v2/monitor/web-ui/state", v))
+        except FortiGateAPIError:
+            ui = None
+        if isinstance(ui, dict) and ui.get("utc_last_reboot") and ui.get("snapshot_utc_time"):
+            seconds = max(0, (ui["snapshot_utc_time"] - ui["utc_last_reboot"]) // 1000)
+            days, rest = divmod(seconds, 86400)
+            out["last_reboot"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ui["utc_last_reboot"] / 1000))
+            out["uptime_seconds"] = seconds
+            out["uptime"] = f"{days}d {rest // 3600}h {rest % 3600 // 60}m"
         return out
 
     elif name == "get_license_status":
