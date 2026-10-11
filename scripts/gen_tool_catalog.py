@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 
 from fortigate_mcp.tools import (  # noqa: E402
     appctrl,
+    config,
     dns_dhcp,
     firewall,
     k8s,
@@ -41,6 +42,7 @@ AREAS = [
     ("DNS and DHCP", dns_dhcp),
     ("Kubernetes (optional, `K8S_KUBECONFIG`)", k8s),
     ("Proxmox VE (optional, `PROXMOX_*`)", pve),
+    ("Any FortiOS setting (schema-driven)", config),
     ("Raw API", raw),
 ]
 START, END = "<!-- TOOLS:START -->", "<!-- TOOLS:END -->"
