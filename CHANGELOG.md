@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-11
+
+### Security
+- TLS certificates are now verified by default. `FORTIGATE_VERIFY_SSL` and
+  `PROXMOX_VERIFY_SSL` default to `true` (they were `false`) and also accept the path to a CA
+  bundle. Setting either to `false` prints a warning at startup.
+
+  **Breaking:** a FortiGate or Proxmox host with a self-signed or factory certificate now fails
+  to connect. Set the CA bundle path, or `FORTIGATE_VERIFY_SSL=false` in a lab.
+
 ## [0.11.0] - 2026-10-11
 
 ### Changed
@@ -195,7 +205,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.8.0...v0.9.0

@@ -44,6 +44,15 @@ This repository has the following security features enabled:
 - ✅ Dependabot Security Updates
 - ✅ Code Scanning (CodeQL) including Actions workflow security
 
+## Deployment Notes
+
+- The server verifies TLS certificates for the FortiGate (`FORTIGATE_VERIFY_SSL`) and Proxmox
+  (`PROXMOX_VERIFY_SSL`) by default. Setting either to `false` exposes the API token to anyone
+  on the network path; the server prints a warning when you do. Prefer pointing the setting at
+  the CA bundle that signed the admin certificate.
+- Use a REST API admin restricted with trusted hosts, and `FORTIGATE_READ_ONLY=true` unless you
+  need changes.
+
 ## Security Best Practices
 
 When contributing to this project:

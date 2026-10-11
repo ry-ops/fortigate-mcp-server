@@ -56,7 +56,7 @@ claude mcp add fortigate --scope user \
   -e FORTIGATE_HOST=192.168.1.99 \
   -e FORTIGATE_API_TOKEN=your-token \
   -e FORTIGATE_READ_ONLY=true \
-  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.11.0 fortigate-mcp-server
+  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.12.0 fortigate-mcp-server
 ```
 
 On macOS you can keep the token in your Keychain instead of in Claude's config:
@@ -65,8 +65,14 @@ On macOS you can keep the token in your Keychain instead of in Claude's config:
 security add-generic-password -a mcp-api -s fortigate-api-token -w   # paste the token when asked
 
 claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGATE_READ_ONLY=true -- \
-  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.11.0 fortigate-mcp-server'
+  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.12.0 fortigate-mcp-server'
 ```
+
+**TLS.** The server verifies the FortiGate's certificate by default. A factory certificate won't pass, so either:
+- give the FortiGate an admin certificate from a CA you trust (`config system global` → `set admin-server-cert`) whose name or IP matches `FORTIGATE_HOST`, and set `FORTIGATE_VERIFY_SSL=/path/to/your-ca.pem` unless the CA is already in the system store; or
+- in a lab only, set `FORTIGATE_VERIFY_SSL=false`. The server then prints a warning at startup, and anyone on the network path can read the API token.
+
+Trusting the FortiGate's own `Fortinet_CA_SSL` doesn't work on evaluation VMs: it has a 512-bit key, and Python rejects it as too weak.
 
 <details><summary><b>Claude Desktop</b></summary>
 
@@ -75,7 +81,7 @@ claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGAT
   "mcpServers": {
     "fortigate": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.11.0", "fortigate-mcp-server"],
+      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.12.0", "fortigate-mcp-server"],
       "env": {
         "FORTIGATE_HOST": "192.168.1.99",
         "FORTIGATE_API_TOKEN": "your-token",
@@ -407,11 +413,11 @@ Things this server handles because they bit us on a real FortiGate-VM:
 | `FORTIGATE_API_TOKEN` | | REST API admin token (recommended) |
 | `FORTIGATE_USERNAME` / `FORTIGATE_PASSWORD` | | Session login, used when no token is set (needed on an unlicensed VM) |
 | `FORTIGATE_VDOM` | `root` | VDOM for every call (tools also take `vdom`) |
-| `FORTIGATE_VERIFY_SSL` | `false` | Verify the TLS certificate |
+| `FORTIGATE_VERIFY_SSL` | `true` | Verify the TLS certificate: `true`, `false` (warns at startup) or the path to a CA bundle |
 | `FORTIGATE_READ_ONLY` | `false` | Refuse every POST/PUT/DELETE before it reaches the FortiGate |
 | `FORTIGATE_TIMEOUT` | `30` | Request timeout in seconds |
 | `K8S_KUBECONFIG` / `K8S_CONTEXT` | | Enables the Kubernetes tools |
-| `PROXMOX_HOST`, `PROXMOX_USER`, `PROXMOX_TOKEN_NAME`, `PROXMOX_TOKEN_VALUE`, `PROXMOX_PORT`, `PROXMOX_VERIFY_SSL` | | Enables the Proxmox tools |
+| `PROXMOX_HOST`, `PROXMOX_USER`, `PROXMOX_TOKEN_NAME`, `PROXMOX_TOKEN_VALUE`, `PROXMOX_PORT`, `PROXMOX_VERIFY_SSL` | | Enables the Proxmox tools. `PROXMOX_VERIFY_SSL` works like `FORTIGATE_VERIFY_SSL` and defaults to `true` |
 | `FORTICLOUD_ACCOUNT` / `FORTICLOUD_PASSWORD` | | Only for `activate_vm_eval_license` (main FortiCloud account, 2FA off) |
 
 Variables can also go in a `.env` file next to the server; see [`.env.example`](.env.example).
@@ -427,7 +433,7 @@ Variables can also go in a `.env` file next to the server; see [`.env.example`](
 
 ## Releases and versioning
 
-Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.11.0`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
+Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.12.0`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
 
 ## Development
 

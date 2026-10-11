@@ -92,3 +92,32 @@ async def test_session_login_failure_raises(monkeypatch):
     )
     with pytest.raises(FortiGateAPIError, match="LOGIN_FAILED"):
         await c.authenticate()
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [(None, True), ("", True), ("true", True), ("1", True), ("false", False), ("FALSE", False),
+     ("0", False), ("off", False), ("/etc/fgt-ca.pem", "/etc/fgt-ca.pem")],
+)
+def test_tls_verify_defaults_on(monkeypatch, value, expected):
+    if value is None:
+        monkeypatch.delenv("X_VERIFY_SSL", raising=False)
+    else:
+        monkeypatch.setenv("X_VERIFY_SSL", value)
+    assert client_mod.tls_verify("X_VERIFY_SSL") == expected
+
+
+def test_ssl_verify_warns_when_off(capsys):
+    assert client_mod.ssl_verify(False, "X_VERIFY_SSL") is False
+    assert "X_VERIFY_SSL=false" in capsys.readouterr().err
+    assert client_mod.ssl_verify(True, "X_VERIFY_SSL") is True
+    assert capsys.readouterr().err == ""
+
+
+def test_ssl_verify_ca_bundle(tmp_path):
+    import certifi
+
+    ctx = client_mod.ssl_verify(certifi.where(), "X_VERIFY_SSL")
+    assert ctx.verify_mode.name == "CERT_REQUIRED" and ctx.check_hostname
+    with pytest.raises(ValueError, match="CA bundle not found"):
+        client_mod.ssl_verify(str(tmp_path / "missing.pem"), "X_VERIFY_SSL")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import ssl
 import sys
 from typing import Any
 
@@ -12,13 +13,45 @@ from dotenv import load_dotenv
 # Load .env before reading the settings below; they are read once, at import time.
 load_dotenv()
 
+_OFF = ("false", "0", "no", "off")
+
+
+def tls_verify(var: str) -> bool | str:
+    """Read a *_VERIFY_SSL setting: True (the default), False, or a path to a CA bundle.
+
+    A CA bundle keeps a self-signed admin certificate verified instead of turning checks off.
+    """
+    raw = os.getenv(var, "").strip()
+    if raw.lower() in _OFF:
+        return False
+    if raw.lower() in ("", "true", "1", "yes", "on"):
+        return True
+    return os.path.expanduser(raw)
+
+
+def ssl_verify(setting: bool | str, var: str) -> bool | ssl.SSLContext:
+    """Turn a tls_verify() value into what httpx accepts, warning on stderr when checks are off."""
+    if setting is False:
+        print(
+            f"! {var}=false: TLS certificates are not verified; anyone on the network path can "
+            "read or alter this traffic, including the credentials",
+            file=sys.stderr,
+        )
+        return False
+    if setting is True:
+        return True
+    if not os.path.isfile(setting):
+        raise ValueError(f"{var}: CA bundle not found: {setting}")
+    return ssl.create_default_context(cafile=setting)
+
+
 FORTIGATE_HOST = os.getenv("FORTIGATE_HOST", "")
 FORTIGATE_PORT = os.getenv("FORTIGATE_PORT", "443")
 FORTIGATE_API_TOKEN = os.getenv("FORTIGATE_API_TOKEN", "")
 FORTIGATE_USERNAME = os.getenv("FORTIGATE_USERNAME", "")
 FORTIGATE_PASSWORD = os.getenv("FORTIGATE_PASSWORD", "")
 FORTIGATE_VDOM = os.getenv("FORTIGATE_VDOM", "root")
-FORTIGATE_VERIFY_SSL = os.getenv("FORTIGATE_VERIFY_SSL", "false").lower() == "true"
+FORTIGATE_VERIFY_SSL = tls_verify("FORTIGATE_VERIFY_SSL")
 FORTIGATE_READ_ONLY = os.getenv("FORTIGATE_READ_ONLY", "false").lower() == "true"
 FORTIGATE_TIMEOUT = float(os.getenv("FORTIGATE_TIMEOUT", "30"))
 
@@ -67,7 +100,9 @@ class FortiGateAPIError(Exception):
 class FortiGateClient:
     def __init__(self) -> None:
         self.base_url = f"https://{FORTIGATE_HOST}:{FORTIGATE_PORT}"
-        self.client = httpx.AsyncClient(verify=FORTIGATE_VERIFY_SSL, timeout=FORTIGATE_TIMEOUT)
+        self.client = httpx.AsyncClient(
+            verify=ssl_verify(FORTIGATE_VERIFY_SSL, "FORTIGATE_VERIFY_SSL"), timeout=FORTIGATE_TIMEOUT
+        )
         self.csrf_token: str | None = None
         self.session_auth = False
 

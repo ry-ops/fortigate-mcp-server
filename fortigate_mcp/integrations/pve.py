@@ -14,6 +14,7 @@ from typing import Any
 
 import httpx
 
+from ..client import ssl_verify, tls_verify
 from ..tools._common import results
 
 PROXMOX_HOST = os.getenv("PROXMOX_HOST", "")
@@ -21,7 +22,7 @@ PROXMOX_PORT = os.getenv("PROXMOX_PORT", "8006")
 PROXMOX_USER = os.getenv("PROXMOX_USER", "")
 PROXMOX_TOKEN_NAME = os.getenv("PROXMOX_TOKEN_NAME", "")
 PROXMOX_TOKEN_VALUE = os.getenv("PROXMOX_TOKEN_VALUE", "")
-PROXMOX_VERIFY_SSL = os.getenv("PROXMOX_VERIFY_SSL", "false").lower() == "true"
+PROXMOX_VERIFY_SSL = tls_verify("PROXMOX_VERIFY_SSL")
 CACHE_SECONDS = 60
 
 _MAC = re.compile(r"(?:^|,)(?:[a-z0-9]+=)?((?:[0-9a-f]{2}:){5}[0-9a-f]{2})", re.I)
@@ -42,7 +43,7 @@ class ProxmoxLookup:
     def __init__(self) -> None:
         self.client = httpx.AsyncClient(
             base_url=f"https://{PROXMOX_HOST}:{PROXMOX_PORT}/api2/json",
-            verify=PROXMOX_VERIFY_SSL,
+            verify=ssl_verify(PROXMOX_VERIFY_SSL, "PROXMOX_VERIFY_SSL"),
             timeout=20.0,
             headers={"Authorization": f"PVEAPIToken={PROXMOX_USER}!{PROXMOX_TOKEN_NAME}={PROXMOX_TOKEN_VALUE}"},
         )

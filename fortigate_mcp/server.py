@@ -9,7 +9,7 @@ Configuration (environment variables):
     FORTIGATE_USERNAME    Admin username (alternative to a token)
     FORTIGATE_PASSWORD    Admin password (alternative to a token)
     FORTIGATE_VDOM        VDOM for every call (default: root)
-    FORTIGATE_VERIFY_SSL  Verify the TLS certificate (default: false)
+    FORTIGATE_VERIFY_SSL  Verify the TLS certificate: true (default), false, or a CA bundle path
     FORTIGATE_READ_ONLY   Block all writes (POST/PUT/DELETE); GET only (default: false)
     FORTIGATE_TIMEOUT     Request timeout in seconds (default: 30)
 """
