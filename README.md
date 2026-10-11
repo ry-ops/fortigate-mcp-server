@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.svg" alt="ry-ops /fortigate-mcp-server: manage a FortiGate firewall from Claude with 74 MCP tools" width="100%"></p>
+<p align="center"><img src="docs/banner.svg" alt="ry-ops /fortigate-mcp-server: manage a FortiGate firewall from Claude with 75 MCP tools" width="100%"></p>
 
 <p align="center">
   <a href="https://github.com/ry-ops/fortigate-mcp-server/releases"><img src="https://img.shields.io/github/v/release/ry-ops/fortigate-mcp-server?color=2dd4bf&label=release" alt="Latest release"></a>
@@ -156,9 +156,9 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 
 <!-- TOOLS:START -->
 
-**74 tools** in 12 areas. Expand an area for one line per tool; your MCP client shows each tool's full description and input schema.
+**75 tools** in 12 areas. Expand an area for one line per tool; your MCP client shows each tool's full description and input schema.
 
-<details><summary><b>System, license and interfaces</b> · 12</summary>
+<details><summary><b>System, license and interfaces</b> · 13</summary>
 
 | Tool | What it does |
 |---|---|
@@ -171,6 +171,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 | `get_interface_status` | Live interface state: link, speed, IP and traffic counters. |
 | `update_interface` | Update an interface. |
 | `list_admin_sessions` | Administrators currently logged in (GUI, SSH, API) and where from. |
+| `audit_admin_access` | Read-only audit of how the FortiGate can be administered: admins without trusted hosts or MFA, the default 'admin' account, API keys, HTTPS/SSH/HTTP/telnet admin access on WAN interfaces, local-in policies, and admin passwords still stored as legacy SHA-256 instead of PBKDF2. |
 | `backup_config` | Back up the full running configuration (FortiOS CLI text) to a local file and return its path and size. |
 | `forticonverter_setup_prompt` | Show or hide the 'Migrate Config with FortiConverter' step of the GUI's FortiGate Setup popup. |
 | `activate_vm_eval_license` | Activate the free permanent evaluation license on an unlicensed FortiGate-VM by logging in to FortiCloud from the FortiGate (the same call the GUI makes). |
@@ -188,7 +189,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 | `delete_firewall_policy` | Delete a firewall policy. |
 | `move_firewall_policy` | Move a policy before or after another one (policies match top-down). |
 | `get_policy_stats` | Hit counts, bytes, packets and last-used time per policy. |
-| `list_sessions` | Current firewall sessions, optionally filtered. |
+| `list_sessions` | Current sessions through the firewall, optionally filtered, with the matched and total session counts. |
 | `list_addresses` | List firewall address objects. |
 | `get_address` | Get one firewall address object. |
 | `create_address` | Create a firewall address: a subnet/host, an IP range, or an FQDN. |
@@ -345,6 +346,7 @@ Things this server handles because they bit us on a real FortiGate-VM:
 - **Endpoints moved in 7.6.** FortiView is `monitor/fortiview/realtime-statistics` (the old `statistics` is gone), sessions are `monitor/firewall/sessions`, and config backups are a POST.
 - **The setup popup on evaluation VMs** never completes its FortiConverter step. The undocumented `POST /api/v2/monitor/forticonverter/show-in-startup/set` with `{"hide": true}` hides it (`forticonverter_setup_prompt`).
 - **Unlicensed VMs** answer most calls with 401, and the GUI goes blank after login, so activate the license through the API (`activate_vm_eval_license`).
+- **Log filters fail silently.** FortiOS ignores a comma OR across different fields (`dstip==X,dstport==Y`) or an `&` in a filter, and returns unfiltered rows. `event/<subtype>` endpoints are not scoped to their subtype either. `get_logs` refuses the bad filters and adds the subtype term itself. [docs/threat-hunting.md](docs/threat-hunting.md) shows how to check the FortiGate against a security advisory with the existing tools.
 
 ## Configuration
 

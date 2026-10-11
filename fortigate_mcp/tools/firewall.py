@@ -132,7 +132,10 @@ TOOLS = [
     },
     {
         "name": "list_sessions",
-        "description": "Current firewall sessions, optionally filtered.",
+        "description": (
+            "Current sessions through the firewall, optionally filtered, with the matched and total "
+            "session counts. Sessions to the FortiGate itself (admin GUI/API) may be counted but not listed."
+        ),
         "inputSchema": schema(
             {
                 "count": INT("Maximum sessions to return (default 50)"),
@@ -340,7 +343,7 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
         return stats
 
     elif name == "list_sessions":
-        params: dict[str, Any] = {**v, "count": args.get("count", 50), "start": 0}
+        params: dict[str, Any] = {**v, "count": args.get("count", 50), "start": 0, "summary": True}
         for key in ("srcaddr", "dstaddr", "dstport", "policyid"):
             if args.get(key) is not None:
                 params[key] = args[key]
@@ -349,7 +352,22 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
         rows = res.get("details", res) if isinstance(res, dict) else res
         if args.get("resolve_vms") and isinstance(rows, list):
             rows = await pve.annotate(rows, client, v)
-        return rows
+        summary = res.get("summary") if isinstance(res, dict) else None
+        if not isinstance(summary, dict):
+            return rows
+        out: dict[str, Any] = {
+            "sessions": rows,
+            "matched": summary.get("matched_count"),
+            "total_sessions": summary.get("session_count"),
+        }
+        if not rows and summary.get("session_count"):
+            # The session table also counts traffic to the FortiGate itself (admin GUI/API),
+            # which this endpoint does not appear to list.
+            out["note"] = (
+                "No listed sessions match; the total may include sessions to the FortiGate itself, "
+                "which this endpoint does not list"
+            )
+        return out
 
     elif name == "list_addresses":
         return results(await client.get(ADDRESS, list_params(args)))

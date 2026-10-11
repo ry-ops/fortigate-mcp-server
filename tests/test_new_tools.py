@@ -114,3 +114,104 @@ async def test_activation_reads_credentials_from_env_only(monkeypatch, fgt):
     assert out["status"] == "success"
     assert rec.requests[-1].url.path == "/api/v2/monitor/system/vmlicense/download-eval"
     assert rec.body() == {"account_id": "me@example.com", "account_password": "s3cret", "is_government": False}
+
+
+async def test_get_logs_scopes_event_subtype_and_drops_strays(fgt):
+    c, rec = fgt
+    rec.respond("GET", "/api/v2/log/memory/event/vpn", 200, {"percent_logs_processed": 6, "results": [
+        {"subtype": "system", "logdesc": "System performance statistics"},
+        {"subtype": "vpn", "action": "info", "logdesc": "Certificate removed"}]})
+    out = await logs.handle("get_logs", {"log_type": "event/vpn", "filter": "action==info"}, c)
+    assert rec.requests[0].url.params.get_list("filter") == ["subtype==vpn", "action==info"]
+    assert [r["logdesc"] for r in out["results"]] == ["Certificate removed"]
+    assert any("don't match" in w for w in out["warnings"]) and any("6%" in w for w in out["warnings"])
+
+
+async def test_get_logs_ands_a_list_and_refuses_filters_fortios_ignores(fgt):
+    c, rec = fgt
+    await logs.handle("get_logs", {"log_type": "traffic/forward", "filter": ["dstport==4332,dstport==4432", "srcip==10.0.0.5"]}, c)
+    assert rec.requests[0].url.params.get_list("filter") == ["dstport==4332,dstport==4432", "srcip==10.0.0.5"]
+    for bad, msg in (("dstip==1.2.3.4,dstport==4332", "different fields"), ("srcip==1.2.3.4&dstport==443", "'&'")):
+        with pytest.raises(ValueError, match=msg):
+            await logs.handle("get_logs", {"log_type": "traffic/forward", "filter": bad}, c)
+    assert len(rec.requests) == 1
+
+
+async def test_get_logs_logid_filter_accepts_short_form(fgt):
+    c, rec = fgt
+    rec.respond("GET", "/api/v2/log/memory/event/system", 200, {"results": [{"subtype": "system", "logid": "0100032001"}]})
+    out = await logs.handle("get_logs", {"log_type": "event/system", "filter": "logid==32001"}, c)
+    assert out["rows"] == 1 and "warnings" not in out
+
+
+AUDIT_CONF = """#config-version=FGVMK6-7.6.7
+config system admin
+    edit "admin"
+        set old-password ENC SH2abcdef
+        set accprofile "super_admin"
+        config gui-dashboard
+            edit 1
+                set name "Status"
+            next
+        end
+        set password ENC PB2abcdef
+    next
+    edit "stale"
+        set accprofile "super_admin"
+        set password ENC SH2ghijkl
+    next
+end
+"""
+
+
+def _audit_responses(rec, version="v7.6.7"):
+    rec.respond("GET", "/api/v2/monitor/system/status", 200, {"version": version, "results": {}})
+    rec.respond("GET", "/api/v2/cmdb/system/admin", 200, {"results": [
+        {"name": "admin", "trusthost1": "0.0.0.0 0.0.0.0", "two-factor": "disable", "remote-auth": "disable"},
+        {"name": "stale", "trusthost1": "10.0.0.0 255.255.255.0", "two-factor": "fortitoken"}]})
+    rec.respond("GET", "/api/v2/cmdb/system/api-user", 200, {"results": [
+        {"name": "ci", "accprofile": "super_admin", "trusthost": []}]})
+    rec.respond("GET", "/api/v2/cmdb/system/interface", 200, {"results": [
+        {"name": "port1", "role": "wan", "ip": "203.0.113.5 255.255.255.0", "allowaccess": "ping https ssh"},
+        {"name": "port2", "role": "lan", "ip": "192.168.1.1 255.255.255.0", "allowaccess": "ping https http"}]})
+    rec.respond("GET", "/api/v2/cmdb/system/password-policy", 200, {"results": {
+        "login-lockout-upon-weaker-encryption": "disable"}})
+    rec.responses[("POST", "/api/v2/monitor/system/config/backup")] = httpx.Response(200, text=AUDIT_CONF)
+
+
+async def test_audit_admin_access_grades_findings(fgt):
+    c, rec = fgt
+    _audit_responses(rec)
+    out = await system.handle("audit_admin_access", {}, c)
+    got = {(f["severity"], f["check"], f["object"]) for f in out["findings"]}
+    assert got == {
+        ("critical", "wan_admin_access", "port1"),
+        ("critical", "api_user_trusthosts", "ci"),
+        ("warn", "admin_trusthosts", "admin"),
+        ("warn", "admin_mfa", "admin"),
+        ("warn", "legacy_hash", "admin"),
+        ("warn", "legacy_hash", "stale"),
+        ("warn", "cleartext_admin", "port2"),
+        ("info", "default_admin", "admin"),
+        ("info", "api_user_profile", "ci"),
+    }
+    assert [f["severity"] for f in out["findings"]][:2] == ["critical", "critical"]
+    assert out["summary"] == {"critical": 2, "warn": 5, "info": 2}
+    assert "SH2abcdef" not in str(out)
+
+
+async def test_audit_admin_access_flags_sha256_firmware_and_can_skip_backup(fgt):
+    c, rec = fgt
+    _audit_responses(rec, version="v7.4.7")
+    out = await system.handle("audit_admin_access", {"check_hashes": False}, c)
+    assert ("critical", "password_hashing") in {(f["severity"], f["check"]) for f in out["findings"]}
+    assert not any(r.method == "POST" for r in rec.requests)
+
+
+def test_pbkdf2_version_cutoffs():
+    from fortigate_mcp.tools.system import _supports_pbkdf2
+
+    assert not _supports_pbkdf2((7, 2, 10)) and _supports_pbkdf2((7, 2, 11))
+    assert not _supports_pbkdf2((7, 4, 7)) and _supports_pbkdf2((7, 4, 8))
+    assert not _supports_pbkdf2((7, 6, 0)) and _supports_pbkdf2((7, 6, 1))
+    assert _supports_pbkdf2((8, 0, 0)) and not _supports_pbkdf2((7, 0, 17))

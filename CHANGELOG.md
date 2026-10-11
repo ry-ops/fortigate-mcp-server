@@ -6,6 +6,29 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+- `audit_admin_access`: a read-only audit of how the FortiGate can be administered. It flags
+  admins without trusted hosts or MFA, the default `admin` account, API keys without trusted
+  hosts or with super_admin rights, HTTPS/SSH/HTTP/telnet admin access on WAN interfaces,
+  firmware older than the PBKDF2 releases (7.2.11, 7.4.8, 7.6.1), and admin passwords still
+  stored as SHA-256 (read from a config backup; `check_hashes=false` skips it). Findings are
+  graded critical/warn/info with a suggested fix.
+
+### Changed
+- `get_logs` takes a list of filter terms, sent as separate `filter` parameters, which FortiOS
+  ANDs together.
+- `list_sessions` returns `{sessions, matched, total_sessions}` and explains an empty list.
+  Sessions to the FortiGate itself are counted but not listed.
+
+### Fixed
+- `get_logs` on `event/*` types returned other subtypes' rows. FortiOS does not scope those
+  endpoints, so with no matching events it stopped part-way through and returned unrelated
+  system events. A `subtype==` term is now added, and any rows that don't match the filter are dropped
+  with a warning.
+- `get_logs` passed through filters that FortiOS silently ignores and then returned unfiltered
+  rows: a comma OR across different fields, or `&` inside a filter. These are now refused with
+  an explanation. A warning is added when FortiOS reports it searched less than the whole log.
+
 ## [0.4.1] - 2026-10-03
 
 ### Fixed

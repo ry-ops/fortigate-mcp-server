@@ -16,7 +16,7 @@
   <path d="M1 15a14 14 0 0 1 14-14h870a14 14 0 0 1 14 14v23H1z" fill="#161b22"/>
   <line x1="1" y1="38" x2="899" y2="38" stroke="#30363d"/>
   <circle cx="24" cy="20" r="6" fill="#f85149"/><circle cx="44" cy="20" r="6" fill="#d29922"/><circle cx="64" cy="20" r="6" fill="#3fb950"/>
-  <text x="450" y="25" text-anchor="middle" class="m" fill="#8b949e" font-size="12">claude  ·  mcp: fortigate (74 tools, read-only)</text>
+  <text x="450" y="25" text-anchor="middle" class="m" fill="#8b949e" font-size="12">claude  ·  mcp: fortigate (75 tools, read-only)</text>
   <g opacity="0">
     <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0.0000;0.0000;0.0067;0.3200;0.3300;1.0000" dur="30s" repeatCount="indefinite"/>
     <g clip-path="url(#c00)"><text x="40" y="74" class="m" fill="#2dd4bf">&gt;</text><text x="58" y="74" class="m" fill="#e6edf3">Who is using the most bandwidth right now?</text></g>

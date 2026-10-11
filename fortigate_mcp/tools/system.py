@@ -1,14 +1,16 @@
-"""System tools: status, license, resources, interfaces, admin sessions, config backup."""
+"""System tools: status, license, resources, interfaces, admin access, config backup."""
 
 from __future__ import annotations
 
+import asyncio
+import ipaddress
 import os
 import re
 import time
 from pathlib import Path
 from typing import Any
 
-from ..client import FortiGateClient
+from ..client import FortiGateAPIError, FortiGateClient
 from ._capacity import capacity
 from ._common import (
     BOOL,
@@ -98,6 +100,20 @@ TOOLS = [
         "inputSchema": schema({}),
     },
     {
+        "name": "audit_admin_access",
+        "description": (
+            "Read-only audit of how the FortiGate can be administered: admins without trusted hosts "
+            "or MFA, the default 'admin' account, API keys, HTTPS/SSH/HTTP/telnet admin access on WAN "
+            "interfaces, local-in policies, and admin passwords still stored as legacy SHA-256 instead "
+            "of PBKDF2. Returns findings graded critical/warn/info, each with a suggested fix. The "
+            "hash check reads a config backup, which the FortiGate logs as a config download; set "
+            "check_hashes=false to skip it."
+        ),
+        "inputSchema": schema(
+            {"check_hashes": BOOL("Check stored password hashes via a config backup (default true)")}
+        ),
+    },
+    {
         "name": "backup_config",
         "description": (
             "Back up the full running configuration (FortiOS CLI text) to a local file and return "
@@ -139,6 +155,165 @@ TOOLS = [
 ]
 
 FORTICONVERTER_PROMPT = "/api/v2/monitor/forticonverter/show-in-startup"
+
+# First releases that store admin passwords with PBKDF2 instead of SHA-256 ("PB2" vs "SH2").
+PBKDF2_SINCE = {(7, 2): (7, 2, 11), (7, 4): (7, 4, 8), (7, 6): (7, 6, 1)}
+ADMIN_ACCESS = ("https", "ssh", "http", "telnet")
+OPEN_TRUSTHOSTS = {"0.0.0.0 0.0.0.0", "::/0"}
+SEVERITY = {"critical": 0, "warn": 1, "info": 2}
+
+
+async def _backup_text(client: FortiGateClient, v: dict[str, Any]) -> str:
+    # FortiOS 7.4+ serves backups via POST only; it changes nothing on the device.
+    text = await client.request(
+        "POST", "/api/v2/monitor/system/config/backup", v,
+        {"destination": "file", "scope": "global"}, read_only_safe=True,
+    )
+    if not isinstance(text, str) or not text.startswith("#config-version"):
+        raise RuntimeError(f"Unexpected backup response: {str(text)[:200]}")
+    return text
+
+
+def _version(text: str) -> tuple[int, ...]:
+    return tuple(int(n) for n in re.findall(r"\d+", text or "")[:3])
+
+
+def _supports_pbkdf2(version: tuple[int, ...]) -> bool:
+    if len(version) < 3:
+        return False
+    since = PBKDF2_SINCE.get(version[:2])
+    return version >= since if since else version[:2] > (7, 6)
+
+
+def _admin_hashes(text: str) -> dict[str, dict[str, str]]:
+    """Hash scheme prefix (SH2, PB2...) of each admin's password and old-password; never the hash."""
+    block = re.search(r"^config system admin\n(.*?)^end$", text, re.M | re.S)
+    out: dict[str, dict[str, str]] = {}
+    admins = block.group(1) if block else ""
+    for m in re.finditer(r'^    edit "([^"]+)"\n(.*?)^    next$', admins, re.M | re.S):
+        out[m.group(1)] = {
+            key: h.group(1)
+            for key in ("password", "old-password")
+            if (h := re.search(rf"^        set {key} ENC (\w{{3}})", m.group(2), re.M))
+        }
+    return out
+
+
+def _trusthosts(entry: dict[str, Any]) -> list[str]:
+    hosts = [v for k, v in entry.items() if re.fullmatch(r"(ip6-)?trusthost\d+", k) and v]
+    for th in entry.get("trusthost") or []:  # api-user lists them as a table
+        hosts.append(th.get("ipv4-trusthost") or th.get("ipv6-trusthost") or "")
+    return [h for h in hosts if h]
+
+
+def _is_private(cidr: str) -> bool:
+    try:
+        return ipaddress.ip_address(cidr.split()[0]).is_private
+    except ValueError:
+        return False
+
+
+async def audit_admin_access(
+    client: FortiGateClient, v: dict[str, Any], check_hashes: bool = True
+) -> dict[str, Any]:
+    findings: list[dict[str, str]] = []
+
+    def add(severity: str, check: str, obj: str, detail: str, fix: str) -> None:
+        findings.append({"severity": severity, "check": check, "object": obj, "detail": detail, "fix": fix})
+
+    async def read(path: str) -> Any:
+        try:
+            return results(await client.get(path, v))
+        except FortiGateAPIError as e:
+            add("info", "not_checked", path, f"Could not read: {e}",
+                "Use a token with read access to this path")
+            return None
+
+    status, admins, api_users, interfaces, local_in, pw_policy = await asyncio.gather(
+        client.get("/api/v2/monitor/system/status", v),
+        read("/api/v2/cmdb/system/admin"),
+        read("/api/v2/cmdb/system/api-user"),
+        read("/api/v2/cmdb/system/interface"),
+        read("/api/v2/cmdb/firewall/local-in-policy"),
+        read("/api/v2/cmdb/system/password-policy"),
+    )
+    firmware = status.get("version", "") if isinstance(status, dict) else ""
+    version = _version(firmware)
+    admins, api_users = admins or [], api_users or []
+
+    open_admins = [a["name"] for a in admins if all(h in OPEN_TRUSTHOSTS for h in _trusthosts(a))]
+    for a in admins:
+        name = a["name"]
+        if name in open_admins:
+            add("warn", "admin_trusthosts", name, "Accepts logins from any address (no trusted hosts)",
+                "Set trusthost1.. to the management subnets")
+        if a.get("two-factor", "disable") == "disable" and a.get("remote-auth") != "enable":
+            add("warn", "admin_mfa", name, "No two-factor authentication",
+                "Enable two-factor (FortiToken, email or SMS)")
+        if name == "admin":
+            add("info", "default_admin", name,
+                "Default account name, first in every password-spraying list",
+                "Create named admins and remove or disable 'admin'")
+    for u in api_users:
+        if not _trusthosts(u):
+            add("critical", "api_user_trusthosts", u["name"], "API key usable from any address",
+                "Add trusted hosts to the API user")
+        if u.get("accprofile") == "super_admin":
+            add("info", "api_user_profile", u["name"], "API key has super_admin rights",
+                "Use a narrower admin profile if full rights are not needed")
+
+    for i in interfaces or []:
+        exposed = [s for s in (i.get("allowaccess") or "").split() if s in ADMIN_ACCESS]
+        if i.get("role") == "wan" and exposed:
+            where = f"{i['name']} ({i.get('ip', '').split()[0]})"
+            private = ""
+            if _is_private(i.get("ip", "")):
+                private = (" Its address is private, so it is reachable from the internet only if an "
+                           "upstream device forwards to it.")
+            add("critical" if open_admins else "warn", "wan_admin_access", i["name"],
+                f"WAN interface {where} allows {', '.join(exposed)}.{private}",
+                "Remove admin access from WAN interfaces, or restrict it with a local-in policy")
+        cleartext = [s for s in (i.get("allowaccess") or "").split() if s in ("http", "telnet")]
+        if cleartext:
+            add("warn", "cleartext_admin", i["name"], f"Allows cleartext {', '.join(cleartext)}",
+                "Remove http/telnet from allowaccess")
+
+    if version and not _supports_pbkdf2(version):
+        add("critical", "password_hashing", firmware,
+            "This firmware stores admin passwords as SHA-256, which can be cracked offline",
+            "Upgrade to 7.2.11, 7.4.8, 7.6.1 or later, then have every admin log in once")
+    # 7.2 and 7.4 call the setting login-lockout-upon-downgrade.
+    lockout_key = (
+        "login-lockout-upon-weaker-encryption" if version[:2] >= (7, 6) else "login-lockout-upon-downgrade"
+    )
+    if check_hashes:
+        try:
+            hashes = _admin_hashes(await _backup_text(client, v))
+        except (FortiGateAPIError, RuntimeError) as e:
+            hashes = {}
+            add("info", "not_checked", "password hashes", f"Could not read a config backup: {e}",
+                "Run with a token that can back up the configuration")
+        for name, h in hashes.items():
+            if h.get("password") == "SH2":
+                add("warn", "legacy_hash", name,
+                    "Password is still stored as SHA-256 (the admin hasn't logged in since the upgrade)",
+                    "Have this admin log in once, or reset the password")
+            lockout_off = isinstance(pw_policy, dict) and pw_policy.get(lockout_key) == "disable"
+            if h.get("old-password") == "SH2" and lockout_off:
+                add("warn", "legacy_hash", name,
+                    f"An old SHA-256 copy of the password is kept ({lockout_key} is disabled)",
+                    f"set {lockout_key} enable under config system password-policy; downgrading "
+                    "below the PBKDF2 releases then locks every admin out")
+
+    findings.sort(key=lambda f: SEVERITY[f["severity"]])
+    counts = {s: sum(f["severity"] == s for f in findings) for s in SEVERITY}
+
+    def refs(value: Any) -> Any:
+        return [r.get("name") for r in value] if isinstance(value, list) else value
+
+    keys = ("policyid", "status", "action", "intf", "srcaddr", "service", "internet-service-src-name")
+    policies = [{k: refs(p.get(k)) for k in keys} for p in local_in or []]
+    return {"firmware": firmware, "summary": counts, "findings": findings, "local_in_policies": policies}
 
 
 
@@ -197,14 +372,11 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
     elif name == "list_admin_sessions":
         return results(await client.get("/api/v2/monitor/system/current-admins", v))
 
+    elif name == "audit_admin_access":
+        return await audit_admin_access(client, v, args.get("check_hashes", True))
+
     elif name == "backup_config":
-        # FortiOS 7.4+ serves backups via POST only; it changes nothing on the device.
-        text = await client.request(
-            "POST", "/api/v2/monitor/system/config/backup", v,
-            {"destination": "file", "scope": "global"}, read_only_safe=True,
-        )
-        if not isinstance(text, str) or not text.startswith("#config-version"):
-            raise RuntimeError(f"Unexpected backup response: {str(text)[:200]}")
+        text = await _backup_text(client, v)
         header = text.splitlines()[0]
         m = re.search(r'^\s*set hostname "([^"]+)"', text, re.M)
         hostname = m.group(1) if m else "fortigate"

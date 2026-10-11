@@ -129,6 +129,15 @@ async def test_sessions_uses_plural_endpoint(fgt):
     assert rec.requests[0].url.params["dstport"] == "443"
 
 
+async def test_sessions_explains_an_empty_list(fgt):
+    c, rec = fgt
+    rec.respond("GET", "/api/v2/monitor/firewall/sessions", 200, {"results": {
+        "summary": {"matched_count": 0, "session_count": 4}, "details": []}})
+    out = await firewall.handle("list_sessions", {}, c)
+    assert rec.requests[0].url.params["summary"] == "true"
+    assert out["sessions"] == [] and out["total_sessions"] == 4 and "FortiGate itself" in out["note"]
+
+
 async def test_forticonverter_prompt_read_only_by_default(fgt):
     from fortigate_mcp.tools import system
 
