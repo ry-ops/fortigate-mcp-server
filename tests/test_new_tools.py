@@ -299,7 +299,8 @@ async def test_audit_hardening_listening_ssl_vpn_on_wan_and_licensed_fortiguard(
     c, rec = fgt
     _lab_responses(rec)
     rec.respond("GET", "/api/v2/monitor/license/status", 200, {"results": {
-        "vm": {"status": "vm_valid"}, "fortiguard": {"connected": False}}})
+        "vm": {"status": "vm_valid"}, "fortiguard": {"supported": True, "connected": False},
+        "ips": {"status": "licensed", "version": "29.00954", "last_update": 1700000000}}})
     rec.respond("GET", "/api/v2/cmdb/vpn.ssl/settings", 200, {"results": {
         "status": "enable", "port": 443, "source-interface": [{"name": "port1"}], "ssl-min-proto-ver": "tls1-2"}})
     rec.respond("GET", "/api/v2/cmdb/firewall/local-in-policy", 200, {"results": [
@@ -308,7 +309,39 @@ async def test_audit_hardening_listening_ssl_vpn_on_wan_and_licensed_fortiguard(
     out = await system.handle("audit_hardening", {"check_hashes": False}, c)
     got = {(f["severity"], f["check"], f["object"]) for f in out["findings"]}
     assert ("critical", "ssl_vpn", "vpn ssl settings") in got
-    assert ("warn", "fortiguard", "FortiGuard") in got
+    assert ("critical", "fortiguard_connection", "FortiGuard") in got
+    assert ("warn", "stale_signatures", "FortiGuard") in got
     assert ("warn", "strong_crypto", "system global") in got
     assert ("info", "local_in_admin", "port1") not in got and ("info", "local_in_admin", "port2") in got
     assert "not_applicable_on_evaluation_license" not in out
+
+
+async def test_audit_hardening_includes_policy_protection_and_logging(fgt):
+    c, rec = fgt
+    _lab_responses(rec)
+    rec.respond("GET", "/api/v2/cmdb/firewall/policy", 200, {"results": [
+        {"policyid": 2, "name": "HOME-to-K3S-MGMT", "action": "accept", "status": "enable",
+         "srcintf": [{"name": "port1"}], "dstintf": [{"name": "port2"}], "utm-status": "disable",
+         "logtraffic": "all"}]})
+    rec.respond("GET", "/api/v2/cmdb/log.syslogd2/setting", 200, {"results": {
+        "status": "enable", "server": "10.0.0.5", "mode": "udp", "enc-algorithm": "disable"}})
+    out = await system.handle("audit_hardening", {"check_hashes": False}, c)
+    by_check = {f["check"]: f for f in out["findings"]}
+    # On the evaluation license a missing IPS sensor is advice, not a warning.
+    assert by_check["no_ips"]["severity"] == "info" and by_check["no_ips"]["section"] == "protection"
+    assert by_check["no_ips"]["object"] == "policy 2:HOME-to-K3S-MGMT"
+    assert by_check["syslog_cleartext"]["section"] == "logging"
+    assert "unlicensed_profile" not in by_check and "no_remote_logging" not in by_check
+
+
+async def test_wan_admin_access_limited_by_local_in_is_info(fgt):
+    c, rec = fgt
+    _lab_responses(rec)
+    rec.respond("GET", "/api/v2/cmdb/firewall/local-in-policy", 200, {"results": [
+        {"policyid": 2, "status": "enable", "action": "accept", "intf": [{"name": "port1"}],
+         "srcaddr": [{"name": "MACMINI-WIRED"}], "service": [{"name": "HTTPS"}, {"name": "SSH"}]},
+        {"policyid": 3, "status": "enable", "action": "deny", "intf": [{"name": "port1"}],
+         "srcaddr": [{"name": "all"}], "service": [{"name": "HTTPS"}, {"name": "SSH"}]}]})
+    out = await system.handle("audit_admin_access", {"check_hashes": False}, c)
+    wan = next(f for f in out["findings"] if f["check"] == "wan_admin_access")
+    assert wan["severity"] == "info" and "local-in allowlist" in wan["detail"]

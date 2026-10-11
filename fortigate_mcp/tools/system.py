@@ -29,7 +29,7 @@ from ._common import (
     vdom_param,
     write_result,
 )
-from ._hardening import EVAL_NOT_APPLICABLE, annotate, fix_plan, hardening_checks
+from ._hardening import EVAL_NOT_APPLICABLE, _has_admin_deny, annotate, fix_plan, hardening_checks
 from ._license import features_report, license_info
 
 TOOLS = [
@@ -132,7 +132,9 @@ TOOLS = [
         "description": (
             "Read-only hardening audit: everything audit_admin_access checks, plus admin access on "
             "LAN interfaces, local-in coverage, telnet, FortiCloud SSO, crypto and TLS settings, SSL "
-            "VPN, logging (implicit deny, local-in denies, remote targets), password policy and NTP. "
+            "VPN, logging (implicit deny, local-in denies, remote targets, cleartext syslog), password "
+            "policy, NTP, FortiGuard updates and stale signatures, whether accept policies are protected "
+            "by security profiles, and HA heartbeat hardening. "
             "Each finding carries the order to fix it in and whether the fix can cut off admin access, "
             "and fix_plan lists them in that order. On the evaluation license it lists the FortiGuard "
             "features that don't apply and what to rely on instead. check_hashes reads a config "
@@ -300,9 +302,14 @@ async def audit_admin_access(
             if _is_private(i.get("ip", "")):
                 private = (" Its address is private, so it is reachable from the internet only if an "
                            "upstream device forwards to it.")
-            add("critical" if open_admins else "warn", "wan_admin_access", i["name"],
-                f"WAN interface {where} allows {', '.join(exposed)}.{private}",
-                "Remove admin access from WAN interfaces, or restrict it with a local-in policy")
+            if _has_admin_deny(local_in or [], i["name"]):
+                add("info", "wan_admin_access", i["name"],
+                    f"WAN interface {where} allows {', '.join(exposed)}, limited by a local-in allowlist.{private}",
+                    "Keep the local-in allowlist current; removing admin access from the WAN is stricter still")
+            else:
+                add("critical" if open_admins else "warn", "wan_admin_access", i["name"],
+                    f"WAN interface {where} allows {', '.join(exposed)}.{private}",
+                    "Remove admin access from WAN interfaces, or restrict it with a local-in policy")
         cleartext = [s for s in (i.get("allowaccess") or "").split() if s in ("http", "telnet")]
         if cleartext:
             add("warn", "cleartext_admin", i["name"], f"Allows cleartext {', '.join(cleartext)}",
@@ -346,6 +353,30 @@ async def audit_admin_access(
     return {"firmware": firmware, "summary": counts, "findings": findings, "local_in_policies": policies}
 
 
+async def _extra_findings(client: FortiGateClient, v: dict[str, Any], is_eval: bool) -> list[dict[str, Any]]:
+    """Findings from the FortiGuard, policy protection, log target and HA checks, in the audit's shape."""
+    from . import _logtargets, fortiguard, profiles
+
+    fgd, prot, logs_, ha = await asyncio.gather(
+        fortiguard.fortiguard_status(client, v), profiles.audit_protection(client, v),
+        _logtargets.log_targets(client, v), access.ha_status(client, v))
+    out: list[dict[str, Any]] = []
+    for f in fgd.get("findings", []):
+        out.append({**f, "object": "FortiGuard"})
+    for f in prot.get("findings", []):
+        if is_eval and f["check"] == "unlicensed_profile":
+            continue  # covered by not_applicable_on_evaluation_license
+        sev = "info" if is_eval and f["check"] == "no_ips" else f["severity"]
+        out.append({"severity": sev, "check": f["check"], "object": f"policy {f['policy']}",
+                    "detail": f["detail"], "fix": f["fix"]})
+    for f in logs_.get("findings", []):
+        if f["check"] != "no_remote_logging":  # hardening_checks reports this as remote_logging
+            out.append(f)
+    for f in ha.get("findings", []):
+        out.append({**f, "object": "HA"})
+    return out
+
+
 async def audit_hardening(
     client: FortiGateClient, v: dict[str, Any], check_hashes: bool = True
 ) -> dict[str, Any]:
@@ -354,11 +385,8 @@ async def audit_hardening(
     is_eval = info.is_eval
     admins_open = any(f["check"] == "admin_trusthosts" for f in admin["findings"])
 
-    findings = admin["findings"] + await hardening_checks(client, v, is_eval, admins_open)
-    if not is_eval and info.fortiguard_connected is False:
-        findings.append({"severity": "warn", "check": "fortiguard", "object": "FortiGuard",
-                         "detail": "Not connected to FortiGuard, so signatures and ratings are going stale",
-                         "fix": "Check DNS, the route to the internet and the FortiGuard contract"})
+    findings = (admin["findings"] + await hardening_checks(client, v, is_eval, admins_open)
+                + await _extra_findings(client, v, is_eval))
     findings = annotate(findings, is_eval)
     out: dict[str, Any] = {
         "firmware": admin["firmware"],
@@ -371,7 +399,6 @@ async def audit_hardening(
     if is_eval:
         out["not_applicable_on_evaluation_license"] = EVAL_NOT_APPLICABLE
     return out
-
 
 
 async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> Any:

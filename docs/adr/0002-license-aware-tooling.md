@@ -86,5 +86,5 @@ unvalidated `fortigate_api` tool.
 1. [x] License helper and `get_license_features`, with `get_license_limits` and `audit_hardening` using it (v0.6.0).
 2. [x] Schema-driven tools: search, describe, get, set (validated, dry run) and get_monitor.
 3. [x] Licensed-feature tools: FortiGuard status and updates, firmware (v0.8.0); security profiles (v0.9.0); FortiToken, logging targets, HA (v0.10.0).
-4. [ ] `audit_hardening` checks for licensed units (stale signatures and lapsed services are covered by `get_fortiguard_status` and `audit_policy_protection`; fold them into the hardening audit).
+4. [x] `audit_hardening` checks for licensed units: FortiGuard, policy protection, log targets and HA (v0.11.0).
 5. [x] README section on free vs licensed units, with the "not yet verified" markers.

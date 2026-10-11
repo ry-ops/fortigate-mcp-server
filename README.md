@@ -185,7 +185,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 | `update_interface` | Update an interface. |
 | `list_admin_sessions` | Administrators currently logged in (GUI, SSH, API) and where from. |
 | `audit_admin_access` | Read-only audit of how the FortiGate can be administered: admins without trusted hosts or MFA, the default 'admin' account, API keys, HTTPS/SSH/HTTP/telnet admin access on WAN interfaces, local-in policies, and admin passwords still stored as legacy SHA-256 instead of PBKDF2. |
-| `audit_hardening` | Read-only hardening audit: everything audit_admin_access checks, plus admin access on LAN interfaces, local-in coverage, telnet, FortiCloud SSO, crypto and TLS settings, SSL VPN, logging (implicit deny, local-in denies, remote targets), password policy and NTP. |
+| `audit_hardening` | Read-only hardening audit: everything audit_admin_access checks, plus admin access on LAN interfaces, local-in coverage, telnet, FortiCloud SSO, crypto and TLS settings, SSL VPN, logging (implicit deny, local-in denies, remote targets, cleartext syslog), password policy, NTP, FortiGuard updates and stale signatures, whether accept policies are protected by security profiles, and HA heartbeat hardening. |
 | `backup_config` | Back up the full running configuration (FortiOS CLI text) to a local file and return its path and size. |
 | `forticonverter_setup_prompt` | Show or hide the 'Migrate Config with FortiConverter' step of the GUI's FortiGate Setup popup. |
 | `activate_vm_eval_license` | Activate the free permanent evaluation license on an unlicensed FortiGate-VM by logging in to FortiCloud from the FortiGate (the same call the GUI makes). |
