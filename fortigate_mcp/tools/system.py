@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ..client import FortiGateAPIError, FortiGateClient
+from . import _access as access
 from ._capacity import capacity
 from ._common import (
     BOOL,
@@ -181,6 +182,7 @@ TOOLS = [
         ),
     },
 ]
+TOOLS += access.TOOLS
 
 FORTICONVERTER_PROMPT = "/api/v2/monitor/forticonverter/show-in-startup"
 
@@ -373,6 +375,8 @@ async def audit_hardening(
 
 
 async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> Any:
+    if name in {t["name"] for t in access.TOOLS}:
+        return await access.handle(name, args, client)
     v = vdom_param(args)
 
     if name == "get_system_status":

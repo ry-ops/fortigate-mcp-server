@@ -7,6 +7,7 @@ from typing import Any
 
 from ..client import FortiGateClient
 from ..integrations import pve
+from . import _logtargets as logtargets
 from ._common import BOOL, INT, STR, STR_LIST, compact, schema, vdom_param
 
 LOG_TYPES = (
@@ -96,9 +97,12 @@ TOOLS = [
         ),
     },
 ]
+TOOLS += logtargets.TOOLS
 
 
 async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> Any:
+    if name in {t["name"] for t in logtargets.TOOLS}:
+        return await logtargets.handle(name, args, client)
     if name == "get_logs":
         log_type = args["log_type"].strip("/")
         if log_type not in LOG_TYPES:
