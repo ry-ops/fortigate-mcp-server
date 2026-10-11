@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-11
+
 ### Added
 - `audit_admin_access`: a read-only audit of how the FortiGate can be administered. It flags
   admins without trusted hosts or MFA, the default `admin` account, API keys without trusted
@@ -99,7 +101,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.2.0...v0.3.0
