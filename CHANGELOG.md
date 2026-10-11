@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-11
+
+### Added
+- Schema-driven tools that reach every FortiOS setting and monitor endpoint, using the schema
+  the FortiGate publishes about itself (`/api/v2/cmdb/?action=schema` and the monitor
+  directory), so they match its firmware:
+  - `search_api`: find configuration and monitor endpoints by keyword.
+  - `describe_config`: a table or settings object's fields, types, allowed values, ranges and
+    defaults.
+  - `get_config`: read any configuration endpoint. Password and key fields show as `<set>`.
+  - `set_config`: update, create or delete, validated against the schema first (field names,
+    options, integer ranges, string lengths, table vs settings rules). It defaults to a dry run
+    that shows each field's current and new value. References take plain names.
+  - `get_monitor`: read any GET monitor endpoint. POST monitor endpoints, which act on the
+    device, are refused.
+
 ## [0.6.0] - 2026-10-11
 
 ### Added
@@ -116,7 +132,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.0...v0.4.1

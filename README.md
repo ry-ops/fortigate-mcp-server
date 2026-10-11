@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.svg" alt="ry-ops /fortigate-mcp-server: manage a FortiGate firewall from Claude with 77 MCP tools" width="100%"></p>
+<p align="center"><img src="docs/banner.svg" alt="ry-ops /fortigate-mcp-server: manage a FortiGate firewall from Claude with 82 MCP tools" width="100%"></p>
 
 <p align="center">
   <a href="https://github.com/ry-ops/fortigate-mcp-server/releases"><img src="https://img.shields.io/github/v/release/ry-ops/fortigate-mcp-server?color=2dd4bf&label=release" alt="Latest release"></a>
@@ -56,7 +56,7 @@ claude mcp add fortigate --scope user \
   -e FORTIGATE_HOST=192.168.1.99 \
   -e FORTIGATE_API_TOKEN=your-token \
   -e FORTIGATE_READ_ONLY=true \
-  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.6.0 fortigate-mcp-server
+  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.7.0 fortigate-mcp-server
 ```
 
 On macOS you can keep the token in your Keychain instead of in Claude's config:
@@ -65,7 +65,7 @@ On macOS you can keep the token in your Keychain instead of in Claude's config:
 security add-generic-password -a mcp-api -s fortigate-api-token -w   # paste the token when asked
 
 claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGATE_READ_ONLY=true -- \
-  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.6.0 fortigate-mcp-server'
+  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.7.0 fortigate-mcp-server'
 ```
 
 <details><summary><b>Claude Desktop</b></summary>
@@ -75,7 +75,7 @@ claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGAT
   "mcpServers": {
     "fortigate": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.6.0", "fortigate-mcp-server"],
+      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.7.0", "fortigate-mcp-server"],
       "env": {
         "FORTIGATE_HOST": "192.168.1.99",
         "FORTIGATE_API_TOKEN": "your-token",
@@ -156,7 +156,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 
 <!-- TOOLS:START -->
 
-**77 tools** in 12 areas. Expand an area for one line per tool; your MCP client shows each tool's full description and input schema.
+**82 tools** in 13 areas. Expand an area for one line per tool; your MCP client shows each tool's full description and input schema.
 
 <details><summary><b>System, license and interfaces</b> · 15</summary>
 
@@ -311,6 +311,18 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 
 </details>
 
+<details><summary><b>Any FortiOS setting (schema-driven)</b> · 5</summary>
+
+| Tool | What it does |
+|---|---|
+| `search_api` | Find FortiOS API endpoints by keyword, from the FortiGate's own schema: configuration (cmdb, e.g. 'bgp' -> router/bgp) and live state (monitor, e.g. 'ha peer' -> system/ha-peer). |
+| `describe_config` | Describe a configuration endpoint from the FortiGate's schema: whether it is a table (many entries, keyed by mkey) or a single settings object, and each field's type, allowed values, range and default. |
+| `get_config` | Read any configuration endpoint: a whole settings object, every entry of a table, or one entry by mkey. |
+| `set_config` | Change any configuration endpoint, validated against the FortiGate's schema first: field names, option values, integer ranges, string lengths, and table vs single-object rules. action is update (default), create or delete. |
+| `get_monitor` | Read any monitor (live state) endpoint, e.g. system/ha-peer, router/ipv4, vpn/ipsec, user/firewall. |
+
+</details>
+
 <details><summary><b>Raw API</b> · 1</summary>
 
 | Tool | What it does |
@@ -328,7 +340,7 @@ Tools take friendly arguments and build the FortiOS body for you: CIDR (`10.0.0.
 | Guard | What it does |
 |---|---|
 | `FORTIGATE_READ_ONLY=true` | The client refuses every POST, PUT and DELETE before it reaches the FortiGate. The only exception is `backup_config`, whose POST only reads. Pair it with a read-only admin profile so FortiOS enforces the same thing. |
-| Dry runs | `k8s_sync_ingress_dns` and `k8s_sync_node_addresses` show their plan unless `dry_run=false`. |
+| Dry runs | `set_config`, `k8s_sync_ingress_dns` and `k8s_sync_node_addresses` show their plan unless `dry_run=false`. `set_config` also validates every field against the FortiGate's own schema first. |
 | Confirmation | `activate_vm_eval_license` reboots the FortiGate, so it requires `confirm=true`, and does nothing on a licensed VM. |
 | Checks before writes | `create_port_forward` checks the target policy's interface and destinations before creating the VIP; wildcard DNS records and edits to read-only built-in profiles are refused up front. |
 | Rollback | A VIP that its policy refuses is deleted again, so nothing is left half-done. |
@@ -379,7 +391,7 @@ Variables can also go in a `.env` file next to the server; see [`.env.example`](
 
 ## Releases and versioning
 
-Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.6.0`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
+Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.7.0`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
 
 ## Development
 
