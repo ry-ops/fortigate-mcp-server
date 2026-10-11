@@ -272,7 +272,7 @@ wheels = [
 
 [[package]]
 name = "fortigate-mcp-server"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

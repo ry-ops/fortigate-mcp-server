@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-11
+
+### Added
+- `list_security_profiles`: security profiles by kind (IPS, antivirus, web and DNS filter,
+  application control, email filter, DLP, file filter, WAF, video filter, SSH filter, virtual
+  patch). Each profile lists the policies that use it and whether the FortiGuard service behind
+  it is licensed, with what it can still do if not.
+- `audit_policy_protection`: checks that accept policies are actually protected. It flags
+  WAN-facing traffic without an IPS sensor, profiles attached while security profiles are
+  disabled on the policy, antivirus/DLP/file filter behind an inspection profile that can't see
+  inside HTTPS, profiles whose FortiGuard service isn't licensed or has expired, and policies
+  that don't log.
+
 ## [0.8.0] - 2026-10-11
 
 ### Added
@@ -150,7 +163,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.5.0...v0.6.0

@@ -130,7 +130,7 @@ def main() -> None:
   <path d="M1 15a14 14 0 0 1 14-14h{W - 30}a14 14 0 0 1 14 14v23H1z" fill="#161b22"/>
   <line x1="1" y1="38" x2="{W - 1}" y2="38" stroke="#30363d"/>
   <circle cx="24" cy="20" r="6" fill="#f85149"/><circle cx="44" cy="20" r="6" fill="#d29922"/><circle cx="64" cy="20" r="6" fill="#3fb950"/>
-  <text x="{W / 2:g}" y="25" text-anchor="middle" class="m" fill="#8b949e" font-size="12">claude  ·  mcp: fortigate (85 tools, read-only)</text>
+  <text x="{W / 2:g}" y="25" text-anchor="middle" class="m" fill="#8b949e" font-size="12">claude  ·  mcp: fortigate (87 tools, read-only)</text>
 {chr(10).join(body)}
 {chr(10).join(dots)}
   <text x="{W - 24}" y="{H - 18}" text-anchor="end" class="m" fill="#484f58" font-size="11">replays a real lab session</text>
