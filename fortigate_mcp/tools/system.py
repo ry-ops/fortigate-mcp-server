@@ -29,6 +29,7 @@ from ._common import (
     write_result,
 )
 from ._hardening import EVAL_NOT_APPLICABLE, annotate, fix_plan, hardening_checks
+from ._license import features_report, license_info
 
 TOOLS = [
     {
@@ -51,6 +52,17 @@ TOOLS = [
             "How much of the license's object limits is used. The free FortiGate-VM evaluation "
             "license allows 1 vCPU, 2 GB RAM and at most 3 interfaces, 3 firewall policies and 3 "
             "static routes; this lists what counts against each so you can plan before hitting one."
+        ),
+        "inputSchema": schema({}),
+    },
+    {
+        "name": "get_license_features",
+        "description": (
+            "What this FortiGate is licensed for: free evaluation VM, licensed VM or hardware; whether "
+            "it reaches FortiGuard; which FortiGuard services (IPS, antivirus, web filter, application "
+            "control, Internet Service Database, FortiCloud logging...) are licensed, not licensed or "
+            "expiring within 30 days; and the version and age of each signature database. Tools that "
+            "need a FortiGuard service check this and say so when it's missing."
         ),
         "inputSchema": schema({}),
     },
@@ -336,24 +348,19 @@ async def audit_hardening(
     client: FortiGateClient, v: dict[str, Any], check_hashes: bool = True
 ) -> dict[str, Any]:
     admin = await audit_admin_access(client, v, check_hashes)
-    try:
-        lic = results(await client.get("/api/v2/monitor/license/status", v))
-    except FortiGateAPIError:
-        lic = {}
-    vm = lic.get("vm", {}) if isinstance(lic, dict) else {}
-    fortiguard = lic.get("fortiguard", {}) if isinstance(lic, dict) else {}
-    is_eval = vm.get("status") == "vm_eval"
+    info = await license_info(client, v)
+    is_eval = info.is_eval
     admins_open = any(f["check"] == "admin_trusthosts" for f in admin["findings"])
 
     findings = admin["findings"] + await hardening_checks(client, v, is_eval, admins_open)
-    if not is_eval and isinstance(fortiguard, dict) and fortiguard.get("connected") is False:
+    if not is_eval and info.fortiguard_connected is False:
         findings.append({"severity": "warn", "check": "fortiguard", "object": "FortiGuard",
                          "detail": "Not connected to FortiGuard, so signatures and ratings are going stale",
                          "fix": "Check DNS, the route to the internet and the FortiGuard contract"})
     findings = annotate(findings, is_eval)
     out: dict[str, Any] = {
         "firmware": admin["firmware"],
-        "license": vm.get("status"),
+        "license": info.vm_status,
         "summary": {s: sum(f["severity"] == s for f in findings) for s in SEVERITY},
         "findings": findings,
         "fix_plan": fix_plan(findings),
@@ -386,6 +393,9 @@ async def handle(name: str, args: dict[str, Any], client: FortiGateClient) -> An
 
     elif name == "get_license_limits":
         return await capacity(client, v)
+
+    elif name == "get_license_features":
+        return features_report(await license_info(client, v, refresh=True))
 
     elif name == "get_resource_usage":
         usage = results(await client.get("/api/v2/monitor/system/resource/usage", {**v, "interval": "1-min"}))

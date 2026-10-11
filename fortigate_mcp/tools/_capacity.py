@@ -11,6 +11,7 @@ from typing import Any
 
 from ..client import FortiGateClient
 from ._common import results
+from ._license import license_info
 
 EVAL_LIMITS = {"policies": 3, "static_routes": 3, "interfaces": 3}
 # Built-in or virtual interfaces that exist on every FortiGate-VM and are not user ports.
@@ -28,9 +29,9 @@ def _in_use(iface: dict[str, Any]) -> bool:
 
 
 async def capacity(client: FortiGateClient, v: dict[str, Any]) -> dict[str, Any]:
-    lic = results(await client.get("/api/v2/monitor/license/status", v))
-    vm = lic.get("vm", {}) if isinstance(lic, dict) else {}
-    is_eval = vm.get("status") == "vm_eval"
+    info = await license_info(client, v)
+    vm = info.raw.get("vm") or {}
+    is_eval = info.is_eval
 
     policies = results(await client.get("/api/v2/cmdb/firewall/policy", {**v, "format": "policyid|name"}))
     routes = results(await client.get("/api/v2/cmdb/router/static", {**v, "format": "seq-num|dst|device"}))
