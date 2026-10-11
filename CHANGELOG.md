@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-11
+
+### Added
+- `get_fortiguard_status`: whether FortiGuard updates are actually arriving. It reports the
+  connection state, each server's reachability and packet loss, the update schedule, licensed
+  services and signature ages. On licensed units it flags failing servers, stale signatures on
+  licensed services and a disabled update schedule. On the evaluation license it explains that
+  FortiGuard is unavailable by design.
+- `update_fortiguard`: ask the FortiGate to contact FortiGuard now. It defaults to a dry run and
+  refuses with a clear message when there is no FortiGuard subscription.
+- `get_firmware_status`: the running firmware, newer images in version order, the supported
+  upgrade path and the automatic firmware upgrade settings. It handles the HTTP 500 FortiOS
+  returns for upgrade paths without FortiGuard.
+- README: "On a licensed FortiGate", marking licensed-unit behaviour as not yet verified.
+
+### Changed
+- License errors name "a FortiGuard subscription" when the whole service is missing.
+
 ## [0.7.0] - 2026-10-11
 
 ### Added
@@ -132,7 +150,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.1...v0.5.0

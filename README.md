@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/banner.svg" alt="ry-ops /fortigate-mcp-server: manage a FortiGate firewall from Claude with 82 MCP tools" width="100%"></p>
+<p align="center"><img src="docs/banner.svg" alt="ry-ops /fortigate-mcp-server: manage a FortiGate firewall from Claude with 85 MCP tools" width="100%"></p>
 
 <p align="center">
   <a href="https://github.com/ry-ops/fortigate-mcp-server/releases"><img src="https://img.shields.io/github/v/release/ry-ops/fortigate-mcp-server?color=2dd4bf&label=release" alt="Latest release"></a>
@@ -56,7 +56,7 @@ claude mcp add fortigate --scope user \
   -e FORTIGATE_HOST=192.168.1.99 \
   -e FORTIGATE_API_TOKEN=your-token \
   -e FORTIGATE_READ_ONLY=true \
-  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.7.0 fortigate-mcp-server
+  -- uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.8.0 fortigate-mcp-server
 ```
 
 On macOS you can keep the token in your Keychain instead of in Claude's config:
@@ -65,7 +65,7 @@ On macOS you can keep the token in your Keychain instead of in Claude's config:
 security add-generic-password -a mcp-api -s fortigate-api-token -w   # paste the token when asked
 
 claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGATE_READ_ONLY=true -- \
-  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.7.0 fortigate-mcp-server'
+  sh -c 'FORTIGATE_API_TOKEN="$(security find-generic-password -a mcp-api -s fortigate-api-token -w)" exec uvx --from git+https://github.com/ry-ops/fortigate-mcp-server@v0.8.0 fortigate-mcp-server'
 ```
 
 <details><summary><b>Claude Desktop</b></summary>
@@ -75,7 +75,7 @@ claude mcp add fortigate --scope user -e FORTIGATE_HOST=192.168.1.99 -e FORTIGAT
   "mcpServers": {
     "fortigate": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.7.0", "fortigate-mcp-server"],
+      "args": ["--from", "git+https://github.com/ry-ops/fortigate-mcp-server@v0.8.0", "fortigate-mcp-server"],
       "env": {
         "FORTIGATE_HOST": "192.168.1.99",
         "FORTIGATE_API_TOKEN": "your-token",
@@ -135,6 +135,16 @@ The FortiGate-VM permanent evaluation license (FortiOS 7.2.1+) is free with a Fo
 | No FortiGuard services (AV, IPS, web filter) or FortiCare | App control works with the signatures bundled in FortiOS. Category blocking needs a subscription. |
 | Low-encryption mode | **Certificate inspection works**: the app-ctrl log names every HTTPS site without decrypting anything. **Deep inspection does not**: the factory CA is 512-bit, and even with your own 2048-bit CA, sites with RSA keys are re-signed with 512-bit keys that curl, Go and containerd reject (container image pulls fail). `list_certificates` flags those weak keys. |
 
+### On a licensed FortiGate
+
+The same server works on licensed FortiGate-VMs and hardware units ([ADR-0002](docs/adr/0002-license-aware-tooling.md)). The tools read the license, apply the evaluation limits only on the evaluation license, and say which FortiGuard service is missing instead of failing with a 401.
+
+- `get_license_features` reports the edition, which FortiGuard services are licensed or expiring, and how old each signature database is.
+- `get_fortiguard_status`, `update_fortiguard` and `get_firmware_status` show whether updates are actually arriving, refresh them, and list newer firmware with its upgrade path.
+- The schema-driven tools (`search_api`, `describe_config`, `get_config`, `set_config`, `get_monitor`) reach every setting the firmware has, including HA, VDOMs, SD-WAN and VPN.
+
+> **Not yet verified on a licensed unit.** These tools are tested against the evaluation VM and against fixtures built from FortiOS 7.6's schema. If you run a licensed FortiGate, a read-only run of `get_license_features` and `get_fortiguard_status` with the output attached to an issue would help confirm them.
+
 ## Integrations
 
 Both are optional. They switch on when their variables are set, and their tools only appear then.
@@ -156,7 +166,7 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 
 <!-- TOOLS:START -->
 
-**82 tools** in 13 areas. Expand an area for one line per tool; your MCP client shows each tool's full description and input schema.
+**85 tools** in 14 areas. Expand an area for one line per tool; your MCP client shows each tool's full description and input schema.
 
 <details><summary><b>System, license and interfaces</b> · 15</summary>
 
@@ -177,6 +187,16 @@ Both sync tools return their plan with `dry_run=true` (the default) and change t
 | `backup_config` | Back up the full running configuration (FortiOS CLI text) to a local file and return its path and size. |
 | `forticonverter_setup_prompt` | Show or hide the 'Migrate Config with FortiConverter' step of the GUI's FortiGate Setup popup. |
 | `activate_vm_eval_license` | Activate the free permanent evaluation license on an unlicensed FortiGate-VM by logging in to FortiCloud from the FortiGate (the same call the GUI makes). |
+
+</details>
+
+<details><summary><b>FortiGuard and firmware</b> · 3</summary>
+
+| Tool | What it does |
+|---|---|
+| `get_fortiguard_status` | Whether FortiGuard updates are actually reaching this FortiGate: connection state, each FortiGuard server's reachability and packet loss, the update schedule, which services are licensed, and how old each signature database is. |
+| `update_fortiguard` | Ask the FortiGate to contact FortiGuard now and refresh its entitlements and signature packages (the GUI's 'Check update now'). |
+| `get_firmware_status` | Running firmware (version, build, maturity, release notes), newer images FortiGuard offers, the supported upgrade path, and the automatic firmware upgrade settings. |
 
 </details>
 
@@ -391,7 +411,7 @@ Variables can also go in a `.env` file next to the server; see [`.env.example`](
 
 ## Releases and versioning
 
-Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.7.0`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
+Versions follow [Semantic Versioning](https://semver.org). Every release is tagged and listed on the [releases page](https://github.com/ry-ops/fortigate-mcp-server/releases), and [CHANGELOG.md](CHANGELOG.md) records what changed. Pin a release with `git+https://github.com/ry-ops/fortigate-mcp-server@v0.8.0`; drop the `@v…` to track `main`. The version is in `pyproject.toml` and `fortigate_mcp.__version__`.
 
 ## Development
 
