@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-11
+
+### Added
+- `get_license_features`: what the FortiGate is licensed for. It reports the edition (free
+  evaluation VM, licensed VM or hardware), the FortiGuard connection, which FortiGuard services
+  are licensed, not licensed or expiring within 30 days, and each signature database's version
+  and age.
+- A shared license helper that reads the license once a minute. Tools that need an unlicensed
+  FortiGuard service say which service is missing instead of failing with a 401.
+- ADR-0002: one license-aware server for free and licensed FortiGates, with schema-driven tools
+  for breadth.
+
+### Changed
+- `get_license_limits` and `audit_hardening` use the shared license helper.
+
 ## [0.5.0] - 2026-10-11
 
 ### Added
@@ -101,7 +116,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.3.0...v0.4.0
