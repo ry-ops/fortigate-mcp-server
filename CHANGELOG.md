@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-11
+
+### Changed
+- `audit_hardening` is now a single audit for free and licensed units. It also includes:
+  - the FortiGuard checks (failing servers, no connection, stale signatures on licensed
+    services, disabled update schedule)
+  - policy protection (WAN-facing traffic without IPS, ignored profiles, content scanners
+    blind to HTTPS, lapsed services)
+  - log targets (cleartext syslog, unverified FortiAnalyzer)
+  - HA heartbeat hardening
+
+  Each finding keeps its fix order and lockout flag. On the evaluation license a missing IPS
+  sensor is reported as advice rather than a warning.
+- `audit_admin_access` reports admin access on a WAN interface as information, not critical,
+  when a local-in policy denies HTTPS/SSH there from everyone but an allowlist.
+
 ## [0.10.0] - 2026-10-11
 
 ### Added
@@ -179,7 +195,8 @@ Initial release: 48 tools for FortiOS 7.6 (system, firewall policies, addresses,
 routing, DNS and DHCP, and a raw `/api/v2/` tool), API-token or session auth with the 7.6 JSON
 login, `FORTIGATE_READ_ONLY`, and FortiOS error details in every failure.
 
-[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ry-ops/fortigate-mcp-server/compare/v0.7.0...v0.8.0
