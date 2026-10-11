@@ -19,6 +19,7 @@ from fortigate_mcp.tools import (  # noqa: E402
     config,
     dns_dhcp,
     firewall,
+    fortiguard,
     k8s,
     logs,
     nat,
@@ -32,6 +33,7 @@ from fortigate_mcp.tools import (  # noqa: E402
 
 AREAS = [
     ("System, license and interfaces", system),
+    ("FortiGuard and firmware", fortiguard),
     ("Firewall policies, addresses and services", firewall),
     ("Port forwards (VIPs)", nat),
     ("Application control", appctrl),

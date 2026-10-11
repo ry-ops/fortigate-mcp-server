@@ -34,6 +34,7 @@ from .tools import (
     config,
     dns_dhcp,
     firewall,
+    fortiguard,
     k8s,
     logs,
     nat,
@@ -47,7 +48,7 @@ from .tools import (
 
 # --- Build unified tool registry ---
 
-MODULES = [system, firewall, nat, appctrl, security, traffic, logs, network, dns_dhcp, config, raw]
+MODULES = [system, fortiguard, firewall, nat, appctrl, security, traffic, logs, network, dns_dhcp, config, raw]
 # Optional integrations: only offered when configured.
 if kube_integration.enabled():
     MODULES.append(k8s)

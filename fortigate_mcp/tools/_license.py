@@ -69,8 +69,10 @@ class License:
             return
         status = self.status(feature) or "unknown"
         where = "the free evaluation license" if self.is_eval else "this FortiGate's contract"
+        service = "a FortiGuard subscription" if feature == "fortiguard" else (
+            f"the FortiGuard {feature.replace('_', ' ')} service")
         raise FortiGateLicenseError(
-            f"{what} needs the FortiGuard {feature.replace('_', ' ')} service, which {where} doesn't "
+            f"{what} needs {service}, which {where} doesn't "
             f"include (license status: {status}). Check get_license_features for what is licensed."
         )
 
